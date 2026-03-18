@@ -311,6 +311,7 @@ def auto_research(
     max_cost: Annotated[float, typer.Option("--max-cost", "-c", help="Max total cost in USD")] = 2.0,
     model: Annotated[str, typer.Option("--model", "-m", help="Model for the agents under test")] = "claude-haiku-4-5",
     max_turns: Annotated[int, typer.Option("--max-turns", help="Max agent turns per trial")] = 3,
+    num_samples: Annotated[int, typer.Option("--samples", "-s", help="Trials per (agent, task) pair — use ≥3 for pass@k")] = 1,
     target: Annotated[str, typer.Option("--target", "-t", help="Optimization target: quality,cost,latency")] = "quality",
     domain: Annotated[Optional[str], typer.Option("--domain", "-d", help="Agent domain (auto-detected if not set)")] = None,
     program_file: Annotated[Optional[Path], typer.Option("--program", "-p", help="Load ResearchProgram from JSON file")] = None,
@@ -321,6 +322,7 @@ def auto_research(
         openbench research "Find the best system prompt for a coding assistant"
         openbench research "Optimize for customer service quality" --max-iter 5 --model claude-haiku-4-5
         openbench research "Balance speed vs quality for data extraction" --target quality,cost
+        openbench research "Find best coding prompt" --samples 5   # enables pass@5
     """
     import json as _json
     from .program import ResearchProgram
@@ -335,6 +337,7 @@ def auto_research(
         # Apply CLI overrides
         program.constraints["model"] = model
         program.constraints["max_turns"] = max_turns
+        program.constraints["num_samples"] = num_samples
     else:
         targets = [t.strip() for t in target.split(",")]
         program = ResearchProgram.from_natural_language(
@@ -344,6 +347,7 @@ def auto_research(
             constraints={
                 "model": model,
                 "max_turns": max_turns,
+                "num_samples": num_samples,
                 "allowed_tools": [],
                 "max_iterations": max_iter,
                 "max_cost_usd": max_cost,

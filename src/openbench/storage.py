@@ -88,6 +88,9 @@ def _experiment_from_dict(d: dict[str, Any]) -> Experiment:
         agent_b=_agent_config_from_dict(d["agent_b"]),
         tasks=d["tasks"],
         tags=d.get("tags", []),
+        num_samples=d.get("num_samples", 1),
+        setup_files=d.get("setup_files", {}),
+        setup_script=d.get("setup_script", None),
     )
 
 

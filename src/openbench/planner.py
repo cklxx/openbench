@@ -29,7 +29,7 @@ class ExperimentPlanner:
         """Generate the first experiment from a ResearchProgram."""
         prompt = self._initial_prompt(program)
         data = self._call(prompt)
-        return self._to_step(data, step_number=1, baseline=None)
+        return self._to_step(data, step_number=1, baseline=None, program=program)
 
     def plan_next(
         self,
@@ -47,7 +47,7 @@ class ExperimentPlanner:
             baseline = last_step.experiment.agent_b
         else:
             baseline = last_step.experiment.agent_a
-        return self._to_step(data, step_number=len(history) + 1, baseline=baseline)
+        return self._to_step(data, step_number=len(history) + 1, baseline=baseline, program=program)
 
     # ── private ──────────────────────────────────────────────────────────────
 
@@ -190,6 +190,7 @@ Return ONLY valid JSON:
         data: dict[str, Any],
         step_number: int,
         baseline: AgentConfig | None,
+        program: ResearchProgram | None = None,
     ) -> OptimizationStep:
         model = data.get("model", "claude-haiku-4-5")
 
@@ -220,6 +221,9 @@ Return ONLY valid JSON:
             agent_a = make_config(agent_a_data, model)
         agent_b = make_config(agent_b_data, model)
 
+        constraints = (program.constraints if program is not None else {})
+        num_samples = int(data.get("num_samples") or constraints.get("num_samples", 1))
+
         experiment = Experiment(
             name=data["experiment_name"],
             description=data["description"],
@@ -231,6 +235,7 @@ Return ONLY valid JSON:
             agent_b=agent_b,
             tasks=data["tasks"],
             tags=["auto_research"],
+            num_samples=num_samples,
         )
 
         return OptimizationStep(

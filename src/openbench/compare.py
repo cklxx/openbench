@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import statistics
+from collections import defaultdict
 from typing import Any
 
 from rich.console import Console
 from rich.table import Table
 from rich import box
 
+from .metrics import pass_at_k
 from .types import ExperimentResult, TrialResult
 
 _console = Console()
@@ -61,14 +63,26 @@ class ResultComparator:
         c.print(f"  Agent B ([blue]{exp.agent_b.name}[/blue]):  {self._truncate(val_b)}")
         c.print()
 
-        # Per-task results
-        for idx, (trial_a, trial_b) in enumerate(
-            zip(result.trials_a, result.trials_b)
-        ):
-            self._print_task(idx + 1, trial_a, trial_b)
+        # Per-task results (only when num_samples == 1 to avoid flooding output)
+        if exp.num_samples == 1:
+            for idx, (trial_a, trial_b) in enumerate(
+                zip(result.trials_a, result.trials_b)
+            ):
+                self._print_task(idx + 1, trial_a, trial_b)
+        else:
+            c.print(
+                f"[dim]num_samples={exp.num_samples} — "
+                f"{len(result.trials_a)} agent-A trials, "
+                f"{len(result.trials_b)} agent-B trials[/dim]"
+            )
+            c.print()
 
         # Summary table
         self._print_summary(result)
+
+        # pass@k table (only when num_samples > 1)
+        if exp.num_samples > 1:
+            self._print_pass_at_k(result)
 
     # ------------------------------------------------------------------
     # Per-task output
@@ -109,7 +123,11 @@ class ResultComparator:
     def _print_summary(self, result: ExperimentResult) -> None:
         c = self._console
         n = len(result.experiment.tasks)
-        c.rule(f"[bold]SUMMARY ({n} task{'s' if n != 1 else ''})[/bold]")
+        ns = result.experiment.num_samples
+        label = f"{n} task{'s' if n != 1 else ''}"
+        if ns > 1:
+            label += f" × {ns} samples"
+        c.rule(f"[bold]SUMMARY ({label})[/bold]")
 
         def collect(trials: list[TrialResult]) -> dict[str, Any]:
             latencies = [t.metrics.latency_ms for t in trials]
@@ -151,7 +169,6 @@ class ResultComparator:
             pct = (b - a) / a * 100.0
             sign = "+" if pct >= 0 else ""
             s = f"{sign}{pct:.1f}%"
-            # Green = improvement, red = regression
             if lower_is_better:
                 color = "green" if pct < 0 else ("red" if pct > 5 else "yellow")
             else:
@@ -166,21 +183,18 @@ class ResultComparator:
             f"{latency_b:.2f}s",
             delta_style(latency_a, latency_b, lower_is_better=True),
         )
-
         table.add_row(
             "Tokens (avg)",
             f"{stats_a['tokens']:,.0f}",
             f"{stats_b['tokens']:,.0f}",
             delta_style(stats_a["tokens"], stats_b["tokens"], lower_is_better=True),
         )
-
         table.add_row(
             "Cost (avg)",
             f"${stats_a['cost']:.5f}",
             f"${stats_b['cost']:.5f}",
             delta_style(stats_a["cost"], stats_b["cost"], lower_is_better=True),
         )
-
         table.add_row(
             "Tools (avg)",
             f"{stats_a['tools']:.1f}",
@@ -198,6 +212,90 @@ class ResultComparator:
         table.add_row("Successes", succ_a, succ_b, succ_delta)
 
         c.print(table)
+
+    # ------------------------------------------------------------------
+    # pass@k table
+    # ------------------------------------------------------------------
+
+    def _print_pass_at_k(self, result: ExperimentResult) -> None:
+        """Print per-task pass@k table. Only called when num_samples > 1."""
+        c = self._console
+        n = result.experiment.num_samples
+
+        # Group trials by task_index.
+        by_task_a: dict[int, list[TrialResult]] = defaultdict(list)
+        by_task_b: dict[int, list[TrialResult]] = defaultdict(list)
+        for t in result.trials_a:
+            by_task_a[t.task_index].append(t)
+        for t in result.trials_b:
+            by_task_b[t.task_index].append(t)
+
+        task_indices = sorted(set(by_task_a) | set(by_task_b))
+        # k values to report: always include 1 and n; add midpoint if n >= 4.
+        ks = sorted({1, n // 2, n} - {0}) if n >= 4 else sorted({1, n})
+
+        c.rule(f"[bold]PASS@k  (n={n} samples per task)[/bold]")
+
+        table = Table(box=box.SIMPLE_HEAVY, show_header=True, header_style="bold")
+        table.add_column("Task", style="bold", min_width=6)
+        table.add_column("k", justify="right", min_width=4)
+        table.add_column(
+            f"Agent A\n({result.experiment.agent_a.name})",
+            style="green", justify="right", min_width=14,
+        )
+        table.add_column(
+            f"Agent B\n({result.experiment.agent_b.name})",
+            style="blue", justify="right", min_width=14,
+        )
+        table.add_column("Winner", justify="center", min_width=8)
+
+        for task_idx in task_indices:
+            trials_a = by_task_a.get(task_idx, [])
+            trials_b = by_task_b.get(task_idx, [])
+            n_a = len(trials_a)
+            n_b = len(trials_b)
+            c_a = sum(1 for t in trials_a if _success(t))
+            c_b = sum(1 for t in trials_b if _success(t))
+
+            # One sample of the task text for display
+            task_label = f"T{task_idx + 1}"
+
+            first_row = True
+            for k in ks:
+                p_a = pass_at_k(n_a, c_a, k) if n_a >= k else 0.0
+                p_b = pass_at_k(n_b, c_b, k) if n_b >= k else 0.0
+                winner = (
+                    "[green]A[/green]" if p_a > p_b
+                    else "[blue]B[/blue]" if p_b > p_a
+                    else "[dim]tie[/dim]"
+                )
+                table.add_row(
+                    task_label if first_row else "",
+                    str(k),
+                    f"{p_a:.2%}",
+                    f"{p_b:.2%}",
+                    winner,
+                )
+                first_row = False
+
+        c.print(table)
+
+        # Overall pass@k (aggregate across all tasks).
+        c.print("[bold]Overall pass@k (all tasks, all samples):[/bold]")
+        all_a = result.trials_a
+        all_b = result.trials_b
+        n_all = len(all_a)
+        c_all_a = sum(1 for t in all_a if _success(t))
+        c_all_b = sum(1 for t in all_b if _success(t))
+
+        for k in ks:
+            if n_all >= k:
+                p_a = pass_at_k(n_all, c_all_a, k)
+                p_b = pass_at_k(n_all, c_all_b, k)
+                winner = "A" if p_a > p_b else "B" if p_b > p_a else "tie"
+                c.print(f"  pass@{k}: A={p_a:.2%}  B={p_b:.2%}  → {winner}")
+
+        c.print()
 
     # ------------------------------------------------------------------
     # Helpers

@@ -1,6 +1,8 @@
-"""Metrics collection for agent runs."""
+"""Metrics collection and calculation for agent runs."""
 
 from __future__ import annotations
+
+import math
 
 # ---------------------------------------------------------------------------
 # Model pricing table (USD per token)
@@ -45,3 +47,27 @@ def calculate_cost(
 def get_pricing(model: str) -> dict[str, float]:
     """Return the pricing dict for *model*, falling back to default pricing."""
     return MODEL_PRICING.get(model, _DEFAULT_PRICING)
+
+
+def pass_at_k(n: int, c: int, k: int) -> float:
+    """Unbiased pass@k estimator (Chen et al. 2021).
+
+    Args:
+        n: Total number of samples attempted.
+        c: Number of samples that passed (correct / no error).
+        k: The k in pass@k — how many attempts are considered.
+
+    Returns:
+        Estimated probability that at least one of k attempts passes.
+        Returns 0.0 when n == 0 or c == 0. Returns 1.0 when all samples pass.
+
+    Raises:
+        ValueError: If k > n (cannot draw more samples than exist).
+    """
+    if k > n:
+        raise ValueError(f"k ({k}) must be ≤ n ({n})")
+    if n == 0 or c == 0:
+        return 0.0
+    if c == n:
+        return 1.0
+    return 1.0 - math.comb(n - c, k) / math.comb(n, k)

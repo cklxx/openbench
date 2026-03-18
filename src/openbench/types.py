@@ -65,6 +65,20 @@ class Experiment:
     tags: list[str] = field(default_factory=list)
     """Arbitrary tags for filtering/searching experiments."""
 
+    num_samples: int = 1
+    """Number of independent trials per (agent, task) pair.
+    Use ≥3 to compute pass@k metrics. Higher = more reliable estimates, higher cost."""
+
+    setup_files: dict[str, str] = field(default_factory=dict)
+    """Files to write into each trial's isolated working directory before the agent starts.
+    Keys are relative paths (e.g. 'problem.py'), values are file contents.
+    Paths must be relative and must not contain '..' (directory traversal is rejected)."""
+
+    setup_script: str | None = None
+    """Optional shell command run in the workdir after setup_files are written
+    but before the agent starts. Use for environment setup, e.g. 'pip install -q pytest'.
+    A non-zero exit code causes the trial to be recorded as an error."""
+
 
 @dataclass
 class TrialMetrics:
@@ -118,7 +132,8 @@ class TrialResult:
     """The input prompt / task text."""
 
     task_index: int
-    """Zero-based index of this task in the experiment's task list."""
+    """Zero-based index of this task in the experiment's task list.
+    Multiple trials with the same task_index are different samples for pass@k."""
 
     output: str
     """Final text result produced by the agent."""
@@ -130,7 +145,7 @@ class TrialResult:
     """ISO-8601 timestamp of when this trial started."""
 
     workdir: str
-    """Temporary working directory that was used for isolation."""
+    """Temporary working directory that was used for isolation (already deleted)."""
 
 
 @dataclass
@@ -141,10 +156,10 @@ class ExperimentResult:
     """The experiment definition (snapshot at run time)."""
 
     trials_a: list[TrialResult]
-    """All trial results for agent_a, one per task."""
+    """All trial results for agent_a. With num_samples>1, contains num_samples entries per task."""
 
     trials_b: list[TrialResult]
-    """All trial results for agent_b, one per task."""
+    """All trial results for agent_b. With num_samples>1, contains num_samples entries per task."""
 
     run_id: str
     """UUID for this specific experiment run."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -53,6 +54,29 @@ def _require_sdk() -> None:
 # Internal async helpers
 # ---------------------------------------------------------------------------
 
+async def _run_setup_script(script: str, workdir: str) -> None:
+    """Run a shell setup script inside the workdir before the agent starts.
+
+    Uses a thread to avoid blocking the event loop during subprocess execution.
+    Raises RuntimeError with stderr output if the script exits non-zero.
+    """
+    def _run() -> subprocess.CompletedProcess:  # type: ignore[type-arg]
+        return subprocess.run(
+            script,
+            shell=True,
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+
+    result = await anyio.to_thread.run_sync(_run)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"setup_script exited with code {result.returncode}.\n"
+            f"stderr: {result.stderr[:500]}"
+        )
+
+
 async def _run_agent_async(
     config: AgentConfig,
     task: str,
@@ -76,7 +100,6 @@ async def _run_agent_async(
     if config.system_prompt is not None:
         options_kwargs["system_prompt"] = config.system_prompt
 
-    # Merge extra_options (user-supplied overrides)
     for k, v in (config.extra_options or {}).items():
         options_kwargs[k] = v
 
@@ -96,11 +119,9 @@ async def _run_agent_async(
         async for message in claude_agent_sdk.query(prompt=task, options=options):
             if isinstance(message, AssistantMessage):
                 num_turns += 1
-                # Collect tool use blocks
                 for block in message.content:
                     if isinstance(block, ToolUseBlock):
                         tool_call_names.append(block.name)
-                # Accumulate token usage if the SDK exposes it per message
                 if message.usage:
                     input_tokens += message.usage.get("input_tokens", 0)
                     output_tokens += message.usage.get("output_tokens", 0)
@@ -112,16 +133,12 @@ async def _run_agent_async(
                 if message.is_error:
                     error = output
                     stop_reason = "error"
-                # Prefer SDK-reported cost and usage when available
                 if message.total_cost_usd is not None:
                     sdk_cost_usd = message.total_cost_usd
                 if message.usage:
                     u = message.usage
-                    # ResultMessage.usage may contain cumulative totals
                     reported_input = u.get("input_tokens", 0)
                     reported_output = u.get("output_tokens", 0)
-                    # Only override our per-message accumulation if the
-                    # ResultMessage gives us a larger (cumulative) value.
                     if reported_input > input_tokens:
                         input_tokens = reported_input
                     if reported_output > output_tokens:
@@ -152,6 +169,10 @@ async def _run_agent_async(
 class ExperimentRunner:
     """Runs an experiment and collects all metrics.
 
+    Agent A and Agent B trials run concurrently per task. When num_samples > 1,
+    all samples for both agents run concurrently within the same task group.
+    Tasks still execute sequentially to respect API rate limits.
+
     Usage::
 
         runner = ExperimentRunner()
@@ -171,23 +192,25 @@ class ExperimentRunner:
         trials_b: list[TrialResult] = []
 
         for task_index, task in enumerate(experiment.tasks):
-            # ---- agent_a ----
-            trial_a = await self._run_trial(
-                experiment.name,
-                experiment.agent_a,
-                task,
-                task_index,
-            )
-            trials_a.append(trial_a)
+            n = experiment.num_samples
 
-            # ---- agent_b ----
-            trial_b = await self._run_trial(
-                experiment.name,
-                experiment.agent_b,
-                task,
-                task_index,
-            )
-            trials_b.append(trial_b)
+            # Pre-allocate result slots; filled concurrently by the task group.
+            slot_a: list[TrialResult | None] = [None] * n
+            slot_b: list[TrialResult | None] = [None] * n
+
+            async with anyio.create_task_group() as tg:
+                for s in range(n):
+                    tg.start_soon(
+                        self._run_and_store,
+                        experiment, experiment.agent_a, task, task_index, slot_a, s,
+                    )
+                    tg.start_soon(
+                        self._run_and_store,
+                        experiment, experiment.agent_b, task, task_index, slot_b, s,
+                    )
+
+            trials_a.extend(t for t in slot_a if t is not None)
+            trials_b.extend(t for t in slot_b if t is not None)
 
         finished_at = datetime.now(timezone.utc).isoformat()
 
@@ -200,9 +223,21 @@ class ExperimentRunner:
             finished_at=finished_at,
         )
 
+    async def _run_and_store(
+        self,
+        experiment: Experiment,
+        config: AgentConfig,
+        task: str,
+        task_index: int,
+        results: list[TrialResult | None],
+        slot: int,
+    ) -> None:
+        """Run one trial and store the result at results[slot]."""
+        results[slot] = await self._run_trial(experiment, config, task, task_index)
+
     async def _run_trial(
         self,
-        experiment_name: str,
+        experiment: Experiment,
         config: AgentConfig,
         task: str,
         task_index: int,
@@ -210,8 +245,38 @@ class ExperimentRunner:
         trial_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        with isolated_workdir() as workdir:
+        with isolated_workdir(setup_files=experiment.setup_files or None) as workdir:
             workdir_str = str(workdir)
+
+            # Run optional setup script before the agent starts.
+            if experiment.setup_script:
+                try:
+                    await _run_setup_script(experiment.setup_script, workdir_str)
+                except RuntimeError as exc:
+                    # Record setup failure as a trial error; skip running the agent.
+                    metrics = TrialMetrics(
+                        latency_ms=0.0,
+                        total_tokens=0,
+                        input_tokens=0,
+                        output_tokens=0,
+                        estimated_cost_usd=0.0,
+                        num_tool_calls=0,
+                        tool_call_names=[],
+                        num_turns=0,
+                        stop_reason="error",
+                        error=f"setup_script failed: {exc}",
+                    )
+                    return TrialResult(
+                        trial_id=trial_id,
+                        experiment_name=experiment.name,
+                        agent_name=config.name,
+                        task=task,
+                        task_index=task_index,
+                        output="",
+                        metrics=metrics,
+                        timestamp=timestamp,
+                        workdir=workdir_str,
+                    )
 
             wall_start = time.monotonic()
             (
@@ -227,23 +292,19 @@ class ExperimentRunner:
             ) = await _run_agent_async(config, task, workdir_str)
             wall_elapsed_ms = (time.monotonic() - wall_start) * 1000.0
 
-        # Prefer SDK-reported duration; fall back to wall-clock.
         latency_ms = float(sdk_duration_ms) if sdk_duration_ms > 0 else wall_elapsed_ms
 
-        # If token counts are zero (SDK didn't report them), estimate from text.
         if input_tokens == 0 and output_tokens == 0:
-            # Estimate: input ~ task + system_prompt, output ~ response
             input_text = task + (config.system_prompt or "")
             input_tokens = estimate_tokens_from_text(input_text)
             output_tokens = estimate_tokens_from_text(output)
 
         total_tokens = input_tokens + output_tokens
 
-        # Prefer SDK cost if available, otherwise calculate from token estimates.
-        if sdk_cost_usd > 0:
-            estimated_cost_usd = sdk_cost_usd
-        else:
-            estimated_cost_usd = calculate_cost(config.model, input_tokens, output_tokens)
+        estimated_cost_usd = (
+            sdk_cost_usd if sdk_cost_usd > 0
+            else calculate_cost(config.model, input_tokens, output_tokens)
+        )
 
         metrics = TrialMetrics(
             latency_ms=latency_ms,
@@ -260,7 +321,7 @@ class ExperimentRunner:
 
         return TrialResult(
             trial_id=trial_id,
-            experiment_name=experiment_name,
+            experiment_name=experiment.name,
             agent_name=config.name,
             task=task,
             task_index=task_index,

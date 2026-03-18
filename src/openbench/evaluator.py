@@ -4,7 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ._sdk_call import sdk_call
+import anyio
+
+from ._sdk_call import sdk_call_async
 from ._utils import _parse_json
 from .program import ResearchProgram
 from .types import ExperimentResult, TrialResult
@@ -40,7 +42,14 @@ class ExperimentEvaluation:
 # ── evaluator ────────────────────────────────────────────────────────────────
 
 class AutoEvaluator:
-    """Scores agent outputs using an LLM judge."""
+    """Scores agent outputs using an LLM judge.
+
+    All per-trial evaluations run concurrently (up to *_MAX_CONCURRENT* at once)
+    via a single anyio event loop started by evaluate(). This avoids the
+    overhead of creating a new event loop for each judge call.
+    """
+
+    _MAX_CONCURRENT = 8  # semaphore cap for concurrent LLM judge calls
 
     def __init__(
         self,
@@ -57,22 +66,53 @@ class AutoEvaluator:
         result: ExperimentResult,
         program: ResearchProgram,
     ) -> ExperimentEvaluation:
-        """Evaluate all trials, compare A vs B, return ExperimentEvaluation."""
+        """Evaluate all trials, compare A vs B, return ExperimentEvaluation.
+
+        Runs all per-trial judge calls concurrently inside a single event loop.
+        """
+        return anyio.run(self._evaluate_async, result, program)
+
+    # ── private ──────────────────────────────────────────────────────────────
+
+    async def _evaluate_async(
+        self,
+        result: ExperimentResult,
+        program: ResearchProgram,
+    ) -> ExperimentEvaluation:
         rubric = self.rubric or program.eval_rubric or self._default_rubric(program)
+        sem = anyio.Semaphore(self._MAX_CONCURRENT)
 
-        evals_a = [self._eval_trial(t, program, rubric) for t in result.trials_a]
-        evals_b = [self._eval_trial(t, program, rubric) for t in result.trials_b]
+        evals_a: list[TaskEvaluation | None] = [None] * len(result.trials_a)
+        evals_b: list[TaskEvaluation | None] = [None] * len(result.trials_b)
 
-        avg_a = sum(e.quality_score for e in evals_a) / max(len(evals_a), 1)
-        avg_b = sum(e.quality_score for e in evals_b) / max(len(evals_b), 1)
+        async def _score(
+            trial: TrialResult,
+            out: list[TaskEvaluation | None],
+            idx: int,
+        ) -> None:
+            async with sem:
+                out[idx] = await self._eval_trial_async(trial, program, rubric)
 
-        verdict = self._compare(result, program, evals_a, evals_b, avg_a, avg_b)
+        async with anyio.create_task_group() as tg:
+            for i, trial in enumerate(result.trials_a):
+                tg.start_soon(_score, trial, evals_a, i)
+            for i, trial in enumerate(result.trials_b):
+                tg.start_soon(_score, trial, evals_b, i)
+
+        # Cast: all slots filled by the task group above.
+        scored_a: list[TaskEvaluation] = evals_a  # type: ignore[assignment]
+        scored_b: list[TaskEvaluation] = evals_b  # type: ignore[assignment]
+
+        avg_a = sum(e.quality_score for e in scored_a) / max(len(scored_a), 1)
+        avg_b = sum(e.quality_score for e in scored_b) / max(len(scored_b), 1)
+
+        verdict = await self._compare_async(result, program, scored_a, scored_b, avg_a, avg_b)
 
         return ExperimentEvaluation(
             run_id=result.run_id,
             experiment_name=result.experiment.name,
-            evals_a=evals_a,
-            evals_b=evals_b,
+            evals_a=scored_a,
+            evals_b=scored_b,
             avg_score_a=avg_a,
             avg_score_b=avg_b,
             winner=verdict["winner"],
@@ -80,8 +120,6 @@ class AutoEvaluator:
             analysis=verdict["analysis"],
             recommendation=verdict["recommendation"],
         )
-
-    # ── private ──────────────────────────────────────────────────────────────
 
     def _default_rubric(self, program: ResearchProgram) -> str:
         targets = ", ".join(program.optimization_targets)
@@ -92,7 +130,7 @@ class AutoEvaluator:
             "and conciseness (is the output appropriately brief?)."
         )
 
-    def _eval_trial(
+    async def _eval_trial_async(
         self,
         trial: TrialResult,
         program: ResearchProgram,
@@ -127,7 +165,7 @@ Score this output. Return ONLY valid JSON (no markdown, no explanation outside J
   "reasoning": "<1-2 sentence explanation>"
 }}"""
 
-        text = sdk_call(prompt, model=self.model)
+        text = await sdk_call_async(prompt, model=self.model)
         data = _parse_json(text)
 
         return TaskEvaluation(
@@ -140,7 +178,7 @@ Score this output. Return ONLY valid JSON (no markdown, no explanation outside J
             judge_model=self.model,
         )
 
-    def _compare(
+    async def _compare_async(
         self,
         result: ExperimentResult,
         program: ResearchProgram,
@@ -155,7 +193,11 @@ Score this output. Return ONLY valid JSON (no markdown, no explanation outside J
             lines = []
             for e in evals:
                 dims = ", ".join(f"{k}={v:.0f}" for k, v in e.dimensions.items())
-                lines.append(f"  Task: {e.task[:60]!r}\n  Score: {e.quality_score:.1f} [{dims}]\n  Reason: {e.reasoning}")
+                lines.append(
+                    f"  Task: {e.task[:60]!r}\n"
+                    f"  Score: {e.quality_score:.1f} [{dims}]\n"
+                    f"  Reason: {e.reasoning}"
+                )
             return "\n".join(lines)
 
         prompt = f"""You are analyzing A/B agent experiment results.
@@ -183,5 +225,5 @@ Return ONLY valid JSON:
   "recommendation": "<specific hypothesis to test next, different from this diff>"
 }}"""
 
-        text = sdk_call(prompt, model=self.model)
+        text = await sdk_call_async(prompt, model=self.model)
         return _parse_json(text)

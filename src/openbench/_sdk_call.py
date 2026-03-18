@@ -8,8 +8,21 @@ import anyio
 
 
 def sdk_call(prompt: str, model: str = "claude-haiku-4-5") -> str:
-    """Make a single-turn, no-tools LLM call and return the result text."""
+    """Make a single-turn, no-tools LLM call and return the result text.
+
+    Starts a new event loop. Use sdk_call_async() when already inside an
+    async context (e.g. inside anyio.run()).
+    """
     return anyio.run(_run_once, prompt, model)
+
+
+async def sdk_call_async(prompt: str, model: str = "claude-haiku-4-5") -> str:
+    """Async version of sdk_call — awaits _run_once directly.
+
+    Must be called from within an existing async context. Avoids the
+    anyio.run() overhead of creating a new event loop per call.
+    """
+    return await _run_once(prompt, model)
 
 
 async def _run_once(prompt: str, model: str) -> str:
