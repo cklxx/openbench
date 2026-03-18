@@ -1,0 +1,47 @@
+{
+  "run_id": "6dea4923-02bb-4b61-a2a8-5a625e916b60",
+  "experiment": {
+    "name": "system_reminder_impact_on_quality",
+    "description": "Testing whether adding a system reminder prompt improves response quality compared to no system prompt.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "no system prompt vs quality-oriented system reminder"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a knowledgeable and precise assistant. Follow these guidelines:\n- Answer questions accurately and thoroughly, citing reasoning where appropriate.\n- Structure your responses clearly: use headings, bullet points, or numbered lists when presenting multiple items.\n- When uncertain, state your confidence level rather than guessing.\n- Be concise but complete — do not omit important details, but avoid unnecessary filler.\n- For analytical questions, consider multiple perspectives before concluding.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What are the three largest deserts in the world by area, and on which continents are they located?",
+      "A store sells apples at $1.20 each and oranges at $0.80 each. If someone buys a mix of 15 fruits for exactly $14.00, how many apples and how many oranges did they buy? Show your reasoning.",
+      "Analyze the key trade-offs between using a relational database (e.g. PostgreSQL) versus a document database (e.g. MongoDB) for an e-commerce platform that needs to handle product catalogs, user accounts, and order history.",
+      "A friend texts you: 'I just bombed my job interview and I feel like a total failure.' Write a warm, natural reply that a supportive friend would actually send over text message.",
+      "Write a six-word story (exactly six words) that evokes a sense of loss.",
+      "Is it possible for a year to have two Friday the 13ths in consecutive months? Answer yes or no and explain why.",
+      "Explain what a black hole is to a curious 8-year-old who just asked you about it at a family dinner."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T09:38:12.126962+00:00",
+  "finished_at": "2026-03-18T09:40:13.836059+00:00",
+  "num_tasks": 7,
+  "trials_a_count": 35,
+  "trials_b_count": 35
+}

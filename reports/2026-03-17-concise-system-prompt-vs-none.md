@@ -26,11 +26,32 @@ An explicit conciseness-focused system prompt reduces token usage while maintain
 
 **Diff field:** `system_prompt`
 
+## Scores
+
+Scoring criteria: accuracy (correctness of answer) + conciseness (penalise unnecessary elaboration, filler, or unsolicited context). Max 100.
+
+| Task | Agent A | Agent B | Notes |
+|------|---------|---------|-------|
+| Capital of Australia | 75 | 100 | A answered correctly but added full historical background (purpose-built city, Griffin architects). B: "Canberra." |
+| TCP vs UDP | 70 | 95 | A produced 990-token response with tables, analogies, and extensive use-case lists — correct but massively over-verbose. B used concise bullets. |
+| Apple change calculation | 90 | 100 | A correct, added redundant trailing sentence ("You get $9.50 in change."). B showed working and stopped. |
+| Python KeyError causes | 75 | 92 | A correct but wrapped each cause in a code block with solutions — far beyond what was asked. B listed three causes cleanly. |
+| Author of '1984' | 80 | 100 | A correct but added unsolicited cultural commentary on dystopian themes. B: one sentence, done. |
+| **Average** | **78.0** | **97.4** | |
+
+## Efficiency
+
+| Metric | Agent A (baseline) | Agent B (variant_v1) |
+|--------|--------------------|----------------------|
+| Tokens (avg) | 469 | 212 |
+| Cost (avg) | $0.00534 | $0.00408 |
+| Latency (avg) | 6.2s | 2.97s |
+
 ## Result
 
-**Winner: B**
+**Winner: B** (avg score 97.4 vs 78.0, −55% tokens, −24% cost)
 
-The concise system prompt successfully reduced verbosity across all task types while maintaining accuracy. Agent B consistently delivered shorter, more direct answers without sacrificing completeness.
+The no-system-prompt baseline defaulted to "be thorough" behaviour, producing answers 2–10× longer than needed with no quality gain. The concise system prompt cut tokens in half and improved every quality score, most dramatically on open-ended technical tasks (TCP/UDP: 70 → 95, KeyError: 75 → 92).
 
 ## Next Experiment
 

@@ -1,0 +1,44 @@
+{
+  "run_id": "f6d09eea-abfd-4c77-b0b6-47f61ed56315",
+  "experiment": {
+    "name": "quality_system_prompt_v1",
+    "description": "Testing whether a quality-focused system prompt improves code output quality compared to no system prompt.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "no system prompt vs quality-focused coding system prompt"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are an expert software engineer. Follow these principles in every response:\n1. Write clean, readable code with descriptive variable and function names.\n2. Handle edge cases and errors explicitly — never silently fail.\n3. Include type hints/annotations where the language supports them.\n4. Keep functions small and single-purpose (max ~20 lines).\n5. Add brief docstrings or comments only where intent is non-obvious.\n6. Prefer standard library solutions over reinventing logic.\n7. Before writing code, briefly state your approach in 1-2 sentences, then implement it.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Write a Python function `parse_duration(s: str) -> int` that converts human-readable duration strings like '2h30m', '45s', '1d12h', '3m' into total seconds. Handle invalid inputs by raising ValueError with a descriptive message.",
+      "Write a JavaScript function `deepMerge(target, source)` that recursively merges two objects. Arrays should be concatenated, not replaced. It should handle nested objects, null values, and avoid mutating the original inputs.",
+      "Write a Python class `RateLimiter` that allows at most N calls within a sliding window of T seconds. It should have a method `allow() -> bool` that returns whether a call is permitted. Use only the standard library.",
+      "Write a TypeScript function `retry<T>(fn: () => Promise<T>, options: { maxAttempts: number, delayMs: number, backoff?: boolean }): Promise<T>` that retries a failing async function with optional exponential backoff. It should throw the last error if all attempts fail."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T03:23:38.536489+00:00",
+  "finished_at": "2026-03-18T03:26:31.818236+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 20,
+  "trials_b_count": 20
+}

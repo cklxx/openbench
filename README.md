@@ -2,6 +2,12 @@
 
 A/B testing platform for Claude agents. Automates the **plan → run → evaluate → repeat** loop to find optimal agent configurations.
 
+## Preview
+
+| Example 1 | Example 2 |
+|:---------:|:---------:|
+| ![Example 1](docs/images/example0.png) | ![Example 2](docs/images/example1.png) |
+
 ## Install
 
 ```bash

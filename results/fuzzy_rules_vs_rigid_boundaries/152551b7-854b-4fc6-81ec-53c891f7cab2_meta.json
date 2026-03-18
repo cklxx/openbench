@@ -1,0 +1,45 @@
+{
+  "run_id": "152551b7-854b-4fc6-81ec-53c891f7cab2",
+  "experiment": {
+    "name": "fuzzy_rules_vs_rigid_boundaries",
+    "description": "Testing whether structurally clear but flexible guidelines outperform rigid numeric constraints in system prompts for general-purpose quality.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Rigid numeric rules vs fuzzy structural guidelines covering the same quality dimensions"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these rules strictly:\n1. Every response must be between 100 and 200 words.\n2. Use exactly 3 paragraphs.\n3. Include at least 2 but no more than 3 concrete examples.\n4. Limit sentences to 20 words maximum each.\n5. Use no more than 1 rhetorical question per response.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these guidelines:\n1. Be concise — say what needs to be said without padding or unnecessary repetition.\n2. Structure your response with clear logical flow — group related ideas together.\n3. Ground your points with concrete examples where they genuinely aid understanding.\n4. Prefer short, direct sentences — but let complex ideas breathe when needed.\n5. Engage the reader naturally — avoid sounding robotic or formulaic.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Explain why some startups fail despite having good products.",
+      "A junior developer asks: what's the difference between authentication and authorization? Explain it clearly.",
+      "I'm debating whether to rent or buy a home in a mid-sized city. What factors should I weigh?",
+      "Summarize the pros and cons of remote work for both employees and employers.",
+      "Why do people procrastinate even when they know the deadline is approaching?"
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T05:44:26.498769+00:00",
+  "finished_at": "2026-03-18T05:46:08.530884+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 25,
+  "trials_b_count": 25
+}

@@ -1,0 +1,47 @@
+{
+  "run_id": "a1fd5c50-adfd-4527-8ccb-fb7debd3648b",
+  "experiment": {
+    "name": "fuzzy_vs_rigid_quality_rules",
+    "description": "Testing whether fuzzy structurally-clear guidelines produce higher quality responses than hard numeric constraints covering the same dimensions.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Rigid numeric constraints (exact word counts, bullet counts, paragraph counts) vs fuzzy structural guidelines covering the same quality dimensions (structure, depth, examples, conciseness)"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these rules for every response:\n1. Keep your response between 100 and 400 words (code blocks excluded from the count).\n2. When listing discrete items, use exactly 3 to 5 bullet points. When explaining connected reasoning, use prose paragraphs.\n3. Include at least 2 concrete examples or evidence points.\n4. Organize your response into 2 to 4 clearly labeled sections appropriate to the task.\n5. Limit each sentence to no more than 25 words.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these guidelines for every response:\n1. Be concise — say enough to fully address the question but no more.\n2. Use bullet points when presenting discrete items; use prose when explaining connected ideas. Include as many or as few points as the content naturally requires.\n3. Ground your claims with concrete examples or evidence where they strengthen the answer.\n4. Give your response a clear structure appropriate to the task — orient the reader, deliver the substance, then land the key takeaway.\n5. Prefer short, direct sentences — break up any that feel clunky to read.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What causes the northern lights (aurora borealis) and what conditions make them most visible?",
+      "Write a Python function that checks whether a given string is a valid palindrome, ignoring spaces, punctuation, and case. Include a brief explanation of your approach.",
+      "A small bakery is considering whether to open a second location or invest in an online ordering and delivery system instead. What are the key trade-offs they should evaluate?",
+      "Write a short, compelling product description (suitable for an e-commerce listing) for a solar-powered portable phone charger designed for hikers.",
+      "Is it safe to refreeze raw meat that was thawed in the refrigerator? Give a clear answer with reasoning.",
+      "List the step-by-step process for setting up a basic CI/CD pipeline using GitHub Actions for a Node.js project.",
+      "Compare the following three investment options for a 30-year-old with moderate risk tolerance: index funds, individual stocks, and real estate. Summarize in a structured format."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T06:45:55.011335+00:00",
+  "finished_at": "2026-03-18T06:47:18.857517+00:00",
+  "num_tasks": 7,
+  "trials_a_count": 35,
+  "trials_b_count": 35
+}

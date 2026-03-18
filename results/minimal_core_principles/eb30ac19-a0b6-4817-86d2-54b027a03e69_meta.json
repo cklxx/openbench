@@ -1,0 +1,43 @@
+{
+  "run_id": "eb30ac19-a0b6-4817-86d2-54b027a03e69",
+  "experiment": {
+    "name": "minimal_core_principles",
+    "description": "Testing whether fewer, simpler fuzzy principles outperform the current 5-guideline set by reducing cognitive overhead",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Replaced 5 specific fuzzy guidelines with 3 distilled core principles that are more natural and less prescriptive, testing whether less instruction yields equal or better quality"
+    },
+    "agent_a": {
+      "name": "variant_v1_baseline_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these guidelines:\n1. Be concise — say what needs to be said without padding or unnecessary repetition.\n2. Structure your response with clear logical flow — group related ideas together.\n3. Ground your points with concrete examples where they genuinely aid understanding.\n4. Prefer short, direct sentences — but let complex ideas breathe when needed.\n5. Engage the reader naturally — avoid sounding robotic or formulaic.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v3",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Be clear, accurate, and genuinely helpful. Structure your thinking naturally — use concrete examples when they matter, and say only what needs to be said.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Explain why some startups fail despite having good products.",
+      "What are the pros and cons of remote work for both employers and employees?",
+      "How should a beginner approach learning a new programming language?"
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T05:50:02.760942+00:00",
+  "finished_at": "2026-03-18T05:50:37.381711+00:00",
+  "num_tasks": 3,
+  "trials_a_count": 15,
+  "trials_b_count": 15
+}

@@ -1,0 +1,48 @@
+{
+  "run_id": "70f236c2-485c-4da1-a0c5-3b005d7ec3bc",
+  "experiment": {
+    "name": "fuzzy_vs_rigid_prompt_rules",
+    "description": "Testing whether qualitative structural guidelines in system prompts produce higher quality responses than equivalent numeric constraints.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Rigid numeric constraints vs fuzzy structural guidelines covering the same quality dimensions (conciseness, structure, examples, clarity)"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these rules for every response:\n1. Keep your answer under 250 words — aim for completeness without excess.\n2. Use bullet points when listing discrete items; aim for one bullet per distinct point.\n3. Include at least one concrete example when explaining abstract concepts.\n4. Keep paragraphs to 3 sentences or fewer.\n5. If a yes/no question, lead with your answer in the first sentence, then justify in no more than 3 sentences.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Follow these rules for every response:\n1. Be concise — cover what's needed without padding or filler.\n2. Use bullet points when listing discrete items; use prose when explaining connected ideas.\n3. Include concrete examples when they would clarify an abstract point.\n4. Keep paragraphs short and focused — each should carry one main idea.\n5. If a yes/no question, lead with your judgment, then briefly justify it.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What causes tides on Earth, and why are some tides stronger than others?",
+      "A store sells apples at 3 for $2. I have $9. If I also need to buy a $1.50 bag, how many apples can I buy at most? Show your reasoning.",
+      "Is it worth learning Latin in 2026? Give me your honest take.",
+      "Explain the difference between a stack and a queue, with a real-world analogy for each.",
+      "Write a short product description for a noise-cancelling headphone aimed at remote workers.",
+      "Compare the pros and cons of remote work vs. office work in a structured format.",
+      "Summarize the key steps to set up a basic personal budget.",
+      "Why do some people find probability counterintuitive? Give one or two classic examples."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T07:27:08.744714+00:00",
+  "finished_at": "2026-03-18T07:29:02.668663+00:00",
+  "num_tasks": 8,
+  "trials_a_count": 40,
+  "trials_b_count": 40
+}

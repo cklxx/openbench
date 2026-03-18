@@ -1,0 +1,47 @@
+{
+  "run_id": "293cac33-b785-48aa-89fc-6ef389e73484",
+  "experiment": {
+    "name": "strict_word_limits",
+    "description": "Test whether stricter word budgets (≤3 bullets, ≤50/100-word caps, no parentheticals) improve over the format-adaptive baseline (exp 2 winner). Only the system_prompt differs.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "format-adaptive rules (≤5 bullets) vs strict word-budget rules (≤3 bullets + word caps)"
+    },
+    "agent_a": {
+      "name": "variant_v2_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a concise Q&A assistant. No preamble, no filler, no repeating the question.\n\nFormat rules:\n- Factual questions: answer in one sentence or fewer.\n- Comparisons/technical concepts: use ≤5 bullet points, each under 15 words.\n- Math/logic problems: show only essential steps and the final answer.\n- Yes/no questions: start with Yes or No, then ≤1 sentence of justification if needed.\n\nAlways: fewest words possible while staying accurate and complete.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v3",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a concise Q&A assistant. No preamble, no filler, no repeating the question.\nNo parenthetical elaborations (avoid phrases like \"(i.e. ...)\" or \"(e.g. ...)\").\n\nFormat rules:\n- Factual questions: ≤50 words.\n- Comparisons/technical concepts: ≤3 bullet points, each under 12 words.\n- Math/logic problems: one line of working + the final answer only.\n- Yes/no questions: start with Yes or No, then ≤15 words of justification if needed.\n\nAlways: fewest words possible while staying accurate and complete.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What is the capital of Australia?",
+      "What are the key differences between TCP and UDP?",
+      "Solve: A train travels 120 km in 1.5 hours. What is its average speed in km/h?",
+      "Is Python an interpreted language?",
+      "Explain what a DNS server does."
+    ],
+    "tags": [
+      "system_prompt",
+      "brevity",
+      "word_limits"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T04:03:59.236891+00:00",
+  "finished_at": "2026-03-18T04:04:22.362994+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}
