@@ -237,12 +237,14 @@ class AutoResearchLoop:
                 eval_cost = len(exp_result.trials_a + exp_result.trials_b) * self._EVAL_COST_EST + 0.003
                 result.total_cost_usd += eval_cost
 
-                is_b_winner = evaluation.winner == "b"
                 delta = evaluation.avg_score_b - evaluation.avg_score_a
-                delta_str = f"+{delta:.1f}" if delta >= 0 else f"{delta:.1f}"
-                winner_color = "blue" if is_b_winner else "green"
-                winner_name = exp.agent_b.name if is_b_winner else exp.agent_a.name
-                winner_label = "B" if is_b_winner else "A"
+                delta_str = f"{delta:+.1f}"
+                _VERDICT = {
+                    "a":   ("green",  "A",   exp.agent_a.name),
+                    "b":   ("blue",   "B",   exp.agent_b.name),
+                    "tie": ("yellow", "Tie", "—"),
+                }
+                winner_color, winner_label, winner_name = _VERDICT[evaluation.winner]
 
                 phase_progress.update(
                     eval_task,
@@ -254,20 +256,21 @@ class AutoResearchLoop:
                 )
                 phase_progress.stop_task(eval_task)
 
-                color_a = "green" if evaluation.winner == "a" else "dim"
-                color_b = "blue" if is_b_winner else "dim"
+                ca = "green" if evaluation.winner == "a" else "dim"
+                cb = "blue"  if evaluation.winner == "b" else "dim"
                 c.print(
                     f"  [bold cyan]Scores[/bold cyan]  "
-                    f"A=[{color_a}]{evaluation.avg_score_a:.1f}[/{color_a}]  "
-                    f"B=[{color_b}]{evaluation.avg_score_b:.1f}[/{color_b}]  "
+                    f"A=[{ca}]{evaluation.avg_score_a:.1f}[/{ca}]  "
+                    f"B=[{cb}]{evaluation.avg_score_b:.1f}[/{cb}]  "
                     f"Winner=[bold {winner_color}]{winner_label}: {winner_name}[/bold {winner_color}]"
                     f" ({delta_str}pts, conf={evaluation.confidence:.2f})"
                 )
                 c.print(f"  [dim]{evaluation.analysis}[/dim]")
 
                 # ── 4. Update best ───────────────────────────────────────────
-                winner_config = exp.agent_b if is_b_winner else exp.agent_a
-                winner_score = evaluation.avg_score_b if is_b_winner else evaluation.avg_score_a
+                use_b = evaluation.winner == "b" or evaluation.avg_score_b >= evaluation.avg_score_a
+                winner_config = exp.agent_b if use_b else exp.agent_a
+                winner_score = evaluation.avg_score_b if use_b else evaluation.avg_score_a
 
                 if winner_score > result.best_score:
                     result.best_config = winner_config
