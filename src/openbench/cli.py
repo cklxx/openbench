@@ -15,7 +15,7 @@ from rich import box
 
 from .storage import ResultStore
 from .compare import ResultComparator
-from ._tui import make_trial_callback
+from ._tui import make_trial_callback, make_turn_callback
 
 app = typer.Typer(
     name="openbench",
@@ -134,7 +134,12 @@ def run_experiment(
                 experiment.agent_a.name, experiment.agent_b.name,
                 num_tasks, cost_accumulator=cost_acc,
             )
-            result = runner.run(experiment, on_trial_done=on_trial_done)
+            on_turn = make_turn_callback(
+                progress, task_a, task_b,
+                experiment.agent_a.name, experiment.agent_b.name,
+                num_tasks,
+            )
+            result = runner.run(experiment, on_trial_done=on_trial_done, on_turn=on_turn)
 
     except ImportError as exc:
         _err_console.print(str(exc))
@@ -415,6 +420,20 @@ def save_program(
     output.write_text(_json.dumps(program.to_dict(), indent=2, ensure_ascii=False))
     _console.print(f"[green]Saved ResearchProgram to[/green] {output}")
     _console.print(f"[dim]Run with:[/dim] openbench research --program {output}")
+
+
+@app.command("tui")
+def launch_tui() -> None:
+    """Launch the interactive history browser (requires: pip install textual)."""
+    try:
+        from ._history_tui import HistoryApp
+    except ImportError:
+        _err_console.print(
+            "textual is required for the TUI browser.\n"
+            "Install it with:  pip install textual"
+        )
+        raise typer.Exit(1)
+    HistoryApp(store=_get_store()).run()
 
 
 # ---------------------------------------------------------------------------

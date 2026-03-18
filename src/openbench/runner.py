@@ -82,8 +82,13 @@ async def _run_agent_async(
     config: AgentConfig,
     task: str,
     workdir: str,
+    on_turn: Callable[[str], None] | None = None,
 ) -> tuple[str, list[str], int, int, int, str, str | None, int, float]:
     """Run a single agent asynchronously and return raw collected data.
+
+    Args:
+        on_turn: Optional callback called after each assistant turn with the
+                 text content of that turn. Used for live streaming display.
 
     Returns:
         Tuple of:
@@ -126,6 +131,16 @@ async def _run_agent_async(
                 if message.usage:
                     input_tokens += message.usage.get("input_tokens", 0)
                     output_tokens += message.usage.get("output_tokens", 0)
+                if on_turn is not None:
+                    text_parts = [
+                        getattr(b, "text", "") for b in message.content
+                        if not isinstance(b, ToolUseBlock) and getattr(b, "text", "")
+                    ]
+                    if text_parts:
+                        try:
+                            on_turn(" ".join(text_parts))
+                        except Exception:  # noqa: BLE001
+                            pass
 
             elif isinstance(message, ResultMessage):
                 output = message.result or ""
@@ -184,6 +199,7 @@ class ExperimentRunner:
         self,
         experiment: Experiment,
         on_trial_done: Callable[[str, int, bool, float], None] | None = None,
+        on_turn: Callable[[str, int, str], None] | None = None,
     ) -> ExperimentResult:
         """Run the experiment synchronously and return the full result.
 
@@ -191,19 +207,19 @@ class ExperimentRunner:
             experiment: The experiment to run.
             on_trial_done: Optional callback invoked after each trial completes.
                 Signature: ``on_trial_done(agent_name, task_index, ok, cost_usd)``
-                where *ok* is ``True`` when the trial succeeded (no error) and
-                *cost_usd* is the trial's estimated cost in USD.
-                Safe to call ``rich.Progress.advance()`` from this callback.
-                Exceptions raised by the callback are caught and printed to
-                stderr so that a UI bug never cancels running trials.
+            on_turn: Optional callback invoked after each assistant turn during
+                a trial. Signature: ``on_turn(agent_name, task_index, text)``
+                where *text* is the combined text content of that turn.
+                Both callbacks swallow exceptions so a UI bug never cancels trials.
         """
         _require_sdk()
-        return anyio.run(self._run_async, experiment, on_trial_done)
+        return anyio.run(self._run_async, experiment, on_trial_done, on_turn)
 
     async def _run_async(
         self,
         experiment: Experiment,
         on_trial_done: Callable[[str, int, bool, float], None] | None,
+        on_turn: Callable[[str, int, str], None] | None = None,
     ) -> ExperimentResult:
         run_id = str(uuid.uuid4())
         started_at = datetime.now(timezone.utc).isoformat()
@@ -223,12 +239,12 @@ class ExperimentRunner:
                     tg.start_soon(
                         self._run_and_store,
                         experiment, experiment.agent_a, task, task_index, slot_a, s,
-                        on_trial_done,
+                        on_trial_done, on_turn,
                     )
                     tg.start_soon(
                         self._run_and_store,
                         experiment, experiment.agent_b, task, task_index, slot_b, s,
-                        on_trial_done,
+                        on_trial_done, on_turn,
                     )
 
             trials_a.extend(t for t in slot_a if t is not None)
@@ -254,9 +270,18 @@ class ExperimentRunner:
         results: list[TrialResult | None],
         slot: int,
         on_trial_done: Callable[[str, int, bool, float], None] | None = None,
+        on_turn: Callable[[str, int, str], None] | None = None,
     ) -> None:
         """Run one trial and store the result at results[slot]."""
-        trial = await self._run_trial(experiment, config, task, task_index)
+        _agent_on_turn: Callable[[str], None] | None = None
+        if on_turn is not None:
+            def _agent_on_turn(text: str) -> None:
+                try:
+                    on_turn(config.name, task_index, text)
+                except Exception:  # noqa: BLE001
+                    pass
+
+        trial = await self._run_trial(experiment, config, task, task_index, on_turn=_agent_on_turn)
         results[slot] = trial
         if on_trial_done is not None:
             ok = trial.metrics.error is None and trial.metrics.stop_reason != "error"
@@ -272,6 +297,7 @@ class ExperimentRunner:
         config: AgentConfig,
         task: str,
         task_index: int,
+        on_turn: Callable[[str], None] | None = None,
     ) -> TrialResult:
         trial_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -320,7 +346,7 @@ class ExperimentRunner:
                 error,
                 sdk_duration_ms,
                 sdk_cost_usd,
-            ) = await _run_agent_async(config, task, workdir_str)
+            ) = await _run_agent_async(config, task, workdir_str, on_turn=on_turn)
             wall_elapsed_ms = (time.monotonic() - wall_start) * 1000.0
 
         latency_ms = float(sdk_duration_ms) if sdk_duration_ms > 0 else wall_elapsed_ms

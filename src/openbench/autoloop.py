@@ -12,7 +12,7 @@ from rich.markdown import Markdown
 from rich.rule import Rule
 
 from ._sdk_call import sdk_call
-from ._tui import make_trial_callback
+from ._tui import make_trial_callback, make_turn_callback
 from .evaluator import AutoEvaluator, ExperimentEvaluation
 from .planner import ExperimentPlanner, OptimizationStep
 from .program import ResearchProgram
@@ -183,9 +183,14 @@ class AutoResearchLoop:
                     exp.agent_a.name, exp.agent_b.name,
                     num_tasks,
                 )
+                on_turn = make_turn_callback(
+                    trial_progress, prog_a, prog_b,
+                    exp.agent_a.name, exp.agent_b.name,
+                    num_tasks,
+                )
 
                 try:
-                    exp_result = self._runner.run(exp, on_trial_done=on_trial_done)
+                    exp_result = self._runner.run(exp, on_trial_done=on_trial_done, on_turn=on_turn)
                 except Exception as exc:
                     phase_progress.update(run_task, description=f"[red]Iter {iteration}  Run failed: {exc}[/red]")
                     phase_progress.stop_task(run_task)

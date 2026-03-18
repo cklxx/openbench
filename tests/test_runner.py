@@ -87,7 +87,7 @@ def _run_with_fake_trials(
     """Run an experiment with _run_trial patched to return fake data."""
     runner = ExperimentRunner()
 
-    async def fake_trial(exp: Any, config: Any, task: Any, task_index: int) -> TrialResult:
+    async def fake_trial(exp: Any, config: Any, task: Any, task_index: int, on_turn: Any = None) -> TrialResult:
         return _make_trial(config.name, task_index, error=error)
 
     with patch("openbench.runner._require_sdk"):

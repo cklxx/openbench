@@ -6,6 +6,49 @@ from collections.abc import Callable
 from rich.progress import Progress
 
 
+def make_turn_callback(
+    progress: Progress,
+    task_a_id: object,
+    task_b_id: object,
+    agent_a_name: str,
+    agent_b_name: str,
+    num_tasks: int,
+) -> Callable[[str, int, str], None]:
+    """Return a closure for ``ExperimentRunner.on_turn``.
+
+    Updates the progress bar description with a live snippet of the agent's
+    current turn output — gives real-time visibility into what each agent is
+    generating while the trial is still running.
+
+    Args:
+        progress:      The rich Progress instance.
+        task_a_id:     Task ID from progress.add_task() for agent A.
+        task_b_id:     Task ID from progress.add_task() for agent B.
+        agent_a_name:  Name of agent A.
+        agent_b_name:  Name of agent B.
+        num_tasks:     Total task count for "T{i}/{num_tasks}" display.
+    """
+
+    def on_turn(agent_name: str, task_index: int, text: str) -> None:
+        snippet = text.replace("\n", " ")
+        if len(snippet) > 50:
+            snippet = snippet[:50] + "…"
+        is_a = agent_name == agent_a_name
+        task_id = task_a_id if is_a else task_b_id
+        color = "green" if is_a else "blue"
+        label = agent_a_name if is_a else agent_b_name
+        progress.update(
+            task_id,
+            description=(
+                f"[{color}]{label}[/{color}]"
+                f" T{task_index + 1}/{num_tasks}"
+                f" [dim italic]{snippet}[/dim italic]"
+            ),
+        )
+
+    return on_turn
+
+
 def make_trial_callback(
     progress: Progress,
     task_a_id: object,
