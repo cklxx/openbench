@@ -29,6 +29,7 @@ class ExperimentPlanner:
         """Generate the first experiment from a ResearchProgram."""
         prompt = self._initial_prompt(program)
         data = self._call(prompt)
+        data = self._critique_and_revise(data, program)
         return self._to_step(data, step_number=1, baseline=None, program=program)
 
     def plan_next(
@@ -41,6 +42,7 @@ class ExperimentPlanner:
         data = self._call(prompt)
         if data.get("converged", False):
             return None
+        data = self._critique_and_revise(data, program)
         # Baseline = winning config from most recent step
         last_step, last_eval = history[-1]
         if last_eval.winner == "b":
@@ -78,10 +80,19 @@ Design ONE A/B experiment where:
 - Start with system_prompt as the diff — it's highest impact and cheapest to test
 - Choose the highest-impact first experiment for the objective
 
-Generate 3-5 representative test tasks for this domain. Tasks should be:
-- Realistic for the domain
-- Short enough to complete in 2-3 turns
-- Diverse (test different aspects of the objective)
+DIFF ISOLATION RULES (critical):
+- A and B must express the SAME intent using different styles — not different intents
+- If testing "fuzzy vs rigid rules": both prompts must cover the same quality dimensions,
+  just expressed differently (e.g. A: "use ≤3 bullets" / B: "use bullets when listing discrete items")
+- If A uses numeric constraints, calibrate them to be achievable for the chosen tasks
+  (e.g. don't set a 100-word limit on tasks that inherently need 300+ words)
+- agent_a must have a genuine chance of winning — if the deck is stacked, the result is useless
+
+TASK DIVERSITY RULES:
+- Include at least 3 different task TYPES from: factual lookup, analytical/explanatory,
+  code/math/logic, structured data, creative, yes/no judgment
+- Do NOT use the same topic repeated across tasks
+- Tasks must be realistic for the domain AND plausibly testable within {program.constraints.get('max_turns', 3)} turns
 
 Return ONLY valid JSON (no markdown wrapper):
 {{
@@ -184,6 +195,66 @@ Return ONLY valid JSON:
   }},
   "tasks": {json.dumps([s.experiment.tasks[0] for s in [step for step, _ in history[:1]]] + ["<task2>", "<task3>"])}
 }}"""
+
+    def _critique_and_revise(self, plan: dict[str, Any], program: ResearchProgram) -> dict[str, Any]:
+        """Adversarial critique pass: check for confirmation bias, bad diff, task imbalance.
+        Returns the original plan if clean, or a revised plan if issues are found."""
+        a_sp = plan.get("agent_a", {}).get("system_prompt") or "(none)"
+        b_sp = plan.get("agent_b", {}).get("system_prompt") or "(none)"
+        tasks = plan.get("tasks", [])
+
+        critique_prompt = f"""You are an adversarial reviewer of A/B experiment designs.
+Your job is to find flaws that would make the result uninterpretable or biased.
+
+RESEARCH OBJECTIVE: {program.objective}
+
+PROPOSED EXPERIMENT:
+  Name: {plan.get('experiment_name')}
+  Hypothesis: {plan.get('hypothesis')}
+  Diff field: {plan.get('diff_field')} — {plan.get('diff_description')}
+  Agent A system_prompt: {a_sp}
+  Agent B system_prompt: {b_sp}
+  Tasks: {json.dumps(tasks, ensure_ascii=False)}
+
+Check for these FOUR specific failure modes:
+
+1. CONFIRMATION BIAS: Does the experiment design almost guarantee B wins?
+   (e.g. the research goal IS the hypothesis, tasks are cherry-picked to favor B's approach)
+
+2. DIRTY DIFF: Do A and B differ on more than one conceptual dimension?
+   (e.g. A has format rules, B has quality rules — these are different intents, not same intent expressed differently)
+
+3. MISCALIBRATED CONSTRAINTS: If A has numeric limits (word counts, bullet counts), are they
+   realistic for the chosen tasks? Would A be forced to truncate or pad unnaturally?
+
+4. TASK IMBALANCE: Are all tasks the same type (e.g. all analytical essays)?
+   A fair test needs variety — at least 2 different task types.
+
+Return ONLY valid JSON:
+{{
+  "issues": ["<issue description>", ...],  // empty list if none
+  "needs_revision": true or false,
+  "revised_agent_a_system_prompt": "<revised prompt or null if no change needed>",
+  "revised_agent_b_system_prompt": "<revised prompt or null if no change needed>",
+  "revised_tasks": ["<task>", ...] or null  // null if tasks are fine
+}}"""
+
+        critique = self._call(critique_prompt)
+        if not critique.get("needs_revision", False):
+            return plan
+
+        # Apply revisions
+        revised = dict(plan)
+        if critique.get("revised_agent_a_system_prompt"):
+            revised["agent_a"] = dict(plan["agent_a"])
+            revised["agent_a"]["system_prompt"] = critique["revised_agent_a_system_prompt"]
+        if critique.get("revised_agent_b_system_prompt"):
+            revised["agent_b"] = dict(plan["agent_b"])
+            revised["agent_b"]["system_prompt"] = critique["revised_agent_b_system_prompt"]
+        revised_tasks = critique.get("revised_tasks")
+        if revised_tasks is not None and len(revised_tasks) > 0:
+            revised["tasks"] = revised_tasks
+        return revised
 
     def _to_step(
         self,
