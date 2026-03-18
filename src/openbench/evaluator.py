@@ -53,7 +53,7 @@ class AutoEvaluator:
 
     def __init__(
         self,
-        model: str = "claude-haiku-4-5",
+        model: str = "claude-sonnet-4-6",
         rubric: str | None = None,
     ) -> None:
         self.model = model
@@ -200,7 +200,35 @@ Score this output. Return ONLY valid JSON (no markdown, no explanation outside J
                 )
             return "\n".join(lines)
 
-        prompt = f"""You are analyzing A/B agent experiment results.
+        # Compute winner and confidence deterministically from scores.
+        # LLM is only asked for analysis + recommendation to avoid self-contradiction.
+        delta = avg_b - avg_a
+        score_delta = abs(delta)
+
+        # Per-task win counts for consistency signal
+        task_wins_b = sum(
+            1 for ea, eb in zip(evals_a, evals_b)
+            if eb.quality_score > ea.quality_score
+        )
+        task_wins_a = sum(
+            1 for ea, eb in zip(evals_a, evals_b)
+            if ea.quality_score > eb.quality_score
+        )
+        n_tasks = max(len(evals_a), 1)
+        consistency = max(task_wins_a, task_wins_b) / n_tasks  # fraction winning direction
+
+        if score_delta < 2.0:
+            winner = "tie"
+            confidence = round(0.3 + 0.1 * consistency, 2)
+        elif score_delta < 5.0:
+            winner = "b" if delta > 0 else "a"
+            confidence = round(0.55 + 0.2 * consistency, 2)
+        else:
+            winner = "b" if delta > 0 else "a"
+            confidence = round(0.75 + 0.15 * consistency, 2)
+        confidence = min(confidence, 0.95)
+
+        prompt = f"""You are analyzing A/B experiment results. The winner has already been determined from scores — your job is to explain WHY and recommend next steps.
 
 RESEARCH OBJECTIVE: {program.objective}
 OPTIMIZATION TARGETS: {', '.join(program.optimization_targets)}
@@ -209,6 +237,7 @@ EXPERIMENT: {exp.name}
 DIFF ({exp.diff.field}): {exp.diff.description}
 - Agent A ({exp.agent_a.name}): avg_score={avg_a:.1f}/100
 - Agent B ({exp.agent_b.name}): avg_score={avg_b:.1f}/100
+- Delta: {delta:+.1f} pts  |  Winner (by score): {winner}  |  Confidence: {confidence:.2f}
 
 AGENT A TRIALS:
 {fmt_evals(evals_a)}
@@ -216,14 +245,18 @@ AGENT A TRIALS:
 AGENT B TRIALS:
 {fmt_evals(evals_b)}
 
-Determine the winner and recommend the NEXT experiment hypothesis.
+Write analysis and a next-step recommendation. Be honest about low-confidence results.
 Return ONLY valid JSON:
 {{
-  "winner": "a" or "b" or "tie",
-  "confidence": <0.0-1.0>,
-  "analysis": "<2-3 sentence analysis of what worked and why>",
+  "analysis": "<2-3 sentences: per-task patterns, what drove the delta, whether the result is conclusive>",
   "recommendation": "<specific hypothesis to test next, different from this diff>"
 }}"""
 
         text = await sdk_call_async(prompt, model=self.model)
-        return _parse_json(text)
+        llm_out = _parse_json(text)
+        return {
+            "winner": winner,
+            "confidence": confidence,
+            "analysis": llm_out.get("analysis", ""),
+            "recommendation": llm_out.get("recommendation", ""),
+        }

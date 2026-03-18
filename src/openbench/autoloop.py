@@ -1,11 +1,14 @@
 """AutoResearchLoop — the main orchestration loop."""
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from rich.console import Console
+from rich.console import Console, Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.markdown import Markdown
 from rich.rule import Rule
 
 from ._sdk_call import sdk_call
@@ -14,7 +17,7 @@ from .planner import ExperimentPlanner, OptimizationStep
 from .program import ResearchProgram
 from .runner import ExperimentRunner
 from .storage import ResultStore
-from .types import AgentConfig, ExperimentResult
+from .types import AgentConfig
 
 
 @dataclass
@@ -55,133 +58,245 @@ class AutoResearchLoop:
         max_iterations: int = 3,
         max_cost_usd: float = 5.0,
         console: Console | None = None,
+        lang: str = "en",
     ) -> AutoResearchResult:
         c = console or Console()
         result = AutoResearchResult(program=program)
         history: list[tuple[OptimizationStep, ExperimentEvaluation]] = []
 
+        # ── Three-layer live display ─────────────────────────────────────────
+        # phase_progress: one row per phase (plan/run/eval), spinner while active,
+        #                 stopped when done — rows stay visible as history
+        phase_progress = Progress(
+            SpinnerColumn(),
+            TimeElapsedColumn(),
+            TextColumn("{task.description}"),
+            console=c,
+        )
+        # trial_progress: A/B bars during running, hidden after each iteration
+        trial_progress = Progress(
+            TextColumn("  "),
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=c,
+        )
+        # overall_progress: one bar across all iterations + live budget
+        overall_progress = Progress(
+            TextColumn("[bold]Overall[/bold]"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            TextColumn("{task.fields[budget]}"),
+            console=c,
+        )
+
+        live_group = Group(
+            Panel(
+                Group(phase_progress, trial_progress),
+                title="[bold cyan]AutoResearch Loop[/bold cyan]",
+                border_style="cyan",
+                padding=(0, 1),
+            ),
+            overall_progress,
+        )
+
         c.print()
-        c.print(Rule("[bold cyan]AutoResearch Loop[/bold cyan]", style="cyan"))
         c.print(f"[dim]Objective:[/dim] {program.objective}")
-        c.print(f"[dim]Targets:[/dim] {', '.join(program.optimization_targets)}")
-        c.print(f"[dim]Budget:[/dim] max {max_iterations} iterations · ${max_cost_usd:.2f} max cost")
+        c.print(f"[dim]Targets:[/dim]   {', '.join(program.optimization_targets)}")
+        c.print(f"[dim]Budget:[/dim]    max {max_iterations} iters · ${max_cost_usd:.2f}")
         c.print()
 
-        for iteration in range(1, max_iterations + 1):
-            if result.total_cost_usd >= max_cost_usd:
-                c.print(f"[yellow]Budget exhausted (${result.total_cost_usd:.3f} / ${max_cost_usd:.2f}). Stopping.[/yellow]")
-                break
+        with Live(live_group, console=c, refresh_per_second=10, transient=False):
+            overall_task = overall_progress.add_task(
+                "iterations",
+                total=max_iterations,
+                budget=f"[dim]${result.total_cost_usd:.3f}/${max_cost_usd:.2f}[/dim]",
+            )
 
-            c.print(Rule(f"[bold]Iteration {iteration}/{max_iterations}[/bold]"))
+            for iteration in range(1, max_iterations + 1):
+                if result.total_cost_usd >= max_cost_usd:
+                    c.print(f"[yellow]Budget exhausted (${result.total_cost_usd:.3f} / ${max_cost_usd:.2f}). Stopping.[/yellow]")
+                    break
 
-            # ── 1. Plan ──────────────────────────────────────────────────────
-            c.print("[bold cyan]▶ Planning[/bold cyan] — generating experiment hypothesis...")
-            try:
-                if iteration == 1:
-                    step = self._planner.plan_initial(program)
-                else:
-                    step = self._planner.plan_next(program, history)
-                    if step is None:
-                        c.print("[green]✓ Converged — planner found no further improvements to test.[/green]")
-                        result.converged = True
-                        break
-            except Exception as exc:
-                c.print(f"[red]Planning failed: {exc}[/red]")
-                break
+                c.print(Rule(
+                    f"[bold]Iteration {iteration}/{max_iterations}[/bold]",
+                    style="dim",
+                ))
 
-            result.total_cost_usd += self._PLAN_COST_EST
-            exp = step.experiment
-            c.print(f"  Hypothesis: [italic]{step.hypothesis}[/italic]")
-            c.print(f"  Experiment: [bold]{exp.name}[/bold]")
-            c.print(f"  Diff ([yellow]{exp.diff.field}[/yellow]): {exp.diff.description}")
-            c.print(f"  Tasks: {len(exp.tasks)} tasks")
-            c.print(f"  Agent A: [green]{exp.agent_a.name}[/green] | Agent B: [blue]{exp.agent_b.name}[/blue]")
-            c.print()
+                # ── 1. Plan ──────────────────────────────────────────────────
+                plan_task = phase_progress.add_task(
+                    f"[yellow]Iter {iteration}[/yellow]  Planning…"
+                )
+                try:
+                    if iteration == 1:
+                        step = self._planner.plan_initial(program)
+                    else:
+                        step = self._planner.plan_next(program, history)
+                except Exception as exc:
+                    phase_progress.update(plan_task, description=f"[red]Iter {iteration}  Planning failed: {exc}[/red]")
+                    phase_progress.stop_task(plan_task)
+                    break
 
-            # ── 2. Run ───────────────────────────────────────────────────────
-            c.print("[bold cyan]▶ Running[/bold cyan] — executing A/B experiment...")
-            try:
-                exp_result = self._runner.run(exp)
-            except Exception as exc:
-                c.print(f"[red]Runner failed: {exc}[/red]")
-                break
+                if iteration > 1 and step is None:
+                    phase_progress.update(plan_task, description=f"[green]Iter {iteration}  Converged[/green]")
+                    phase_progress.stop_task(plan_task)
+                    c.print("[green]✓ Converged — no further improvements to test.[/green]")
+                    result.converged = True
+                    break
 
-            # Show per-task progress
-            for i, (ta, tb) in enumerate(zip(exp_result.trials_a, exp_result.trials_b)):
-                task_preview = ta.task[:55] + "..." if len(ta.task) > 55 else ta.task
-                ok_a = "✓" if not ta.metrics.error else "✗"
-                ok_b = "✓" if not tb.metrics.error else "✗"
-                c.print(f"  Task {i+1}: [dim]{task_preview!r}[/dim]")
+                result.total_cost_usd += self._PLAN_COST_EST
+                exp = step.experiment
+                phase_progress.update(
+                    plan_task,
+                    description=f"[dim]Iter {iteration}[/dim]  [bold]Plan[/bold]  {step.hypothesis[:60]}",
+                )
+                phase_progress.stop_task(plan_task)
+
                 c.print(
-                    f"    A [{ok_a}] {ta.metrics.latency_ms/1000:.1f}s {ta.metrics.total_tokens}tok  "
-                    f"B [{ok_b}] {tb.metrics.latency_ms/1000:.1f}s {tb.metrics.total_tokens}tok"
+                    f"  [bold cyan]Plan[/bold cyan]  {step.hypothesis}\n"
+                    f"  diff=[yellow]{exp.diff.field}[/yellow]: {exp.diff.description}\n"
+                    f"  [green]{exp.agent_a.name}[/green] vs [blue]{exp.agent_b.name}[/blue]"
+                    f"  —  {len(exp.tasks)} task(s)"
                 )
 
-            # Save to store
-            try:
-                self._store.save_result(exp_result)
-            except Exception:
-                pass  # non-fatal
+                # ── 2. Run ───────────────────────────────────────────────────
+                num_tasks = len(exp.tasks)
+                total_trials = num_tasks * exp.num_samples
 
-            # Account for trial costs
-            trial_cost = sum(t.metrics.estimated_cost_usd for t in exp_result.trials_a + exp_result.trials_b)
-            result.total_cost_usd += trial_cost
-            c.print()
+                run_task = phase_progress.add_task(
+                    f"[yellow]Iter {iteration}[/yellow]  Running…"
+                )
+                prog_a = trial_progress.add_task(
+                    f"[green]A: {exp.agent_a.name}[/green]", total=total_trials
+                )
+                prog_b = trial_progress.add_task(
+                    f"[blue]B: {exp.agent_b.name}[/blue]", total=total_trials
+                )
 
-            # ── 3. Evaluate ──────────────────────────────────────────────────
-            c.print("[bold cyan]▶ Evaluating[/bold cyan] — LLM judge scoring outputs...")
-            try:
-                evaluation = self._evaluator.evaluate(exp_result, program)
-            except Exception as exc:
-                c.print(f"[red]Evaluation failed: {exc}[/red]")
-                break
+                def on_trial_done(agent_name: str, task_index: int, ok: bool) -> None:
+                    icon = "" if ok else " [red]✗[/red]"
+                    if agent_name == exp.agent_a.name:
+                        trial_progress.advance(prog_a)
+                        trial_progress.update(prog_a, description=(
+                            f"[green]A: {exp.agent_a.name}[/green]"
+                            f" T{task_index + 1}/{num_tasks}{icon}"
+                        ))
+                    else:
+                        trial_progress.advance(prog_b)
+                        trial_progress.update(prog_b, description=(
+                            f"[blue]B: {exp.agent_b.name}[/blue]"
+                            f" T{task_index + 1}/{num_tasks}{icon}"
+                        ))
 
-            eval_cost = len(exp_result.trials_a + exp_result.trials_b) * self._EVAL_COST_EST + 0.003
-            result.total_cost_usd += eval_cost
+                try:
+                    exp_result = self._runner.run(exp, on_trial_done=on_trial_done)
+                except Exception as exc:
+                    phase_progress.update(run_task, description=f"[red]Iter {iteration}  Run failed: {exc}[/red]")
+                    phase_progress.stop_task(run_task)
+                    trial_progress.update(prog_a, visible=False)
+                    trial_progress.update(prog_b, visible=False)
+                    break
 
-            is_b_winner = evaluation.winner == "b"
-            color_a = "green" if evaluation.winner == "a" else "dim"
-            color_b = "blue" if is_b_winner else "dim"
-            c.print(f"  Agent A avg score: [{color_a}]{evaluation.avg_score_a:.1f}/100[/{color_a}]")
-            c.print(f"  Agent B avg score: [{color_b}]{evaluation.avg_score_b:.1f}/100[/{color_b}]")
+                # Hide trial bars; mark phase done
+                trial_progress.update(prog_a, visible=False)
+                trial_progress.update(prog_b, visible=False)
+                phase_progress.update(
+                    run_task,
+                    description=f"[dim]Iter {iteration}[/dim]  [bold]Run[/bold]  {len(exp.tasks)} tasks complete",
+                )
+                phase_progress.stop_task(run_task)
 
-            delta = evaluation.avg_score_b - evaluation.avg_score_a
-            delta_str = f"+{delta:.1f}" if delta >= 0 else f"{delta:.1f}"
-            winner_label = "Agent B" if is_b_winner else "Agent A"
-            winner_color = "blue" if is_b_winner else "green"
-            winner_name = exp.agent_b.name if is_b_winner else exp.agent_a.name
-            c.print(
-                f"  Winner: [bold]{winner_label}[/bold] "
-                f"([{winner_color}]{winner_name}[/{winner_color}]) "
-                f"({delta_str}pts, confidence={evaluation.confidence:.2f})"
-            )
-            c.print(f"  [dim]{evaluation.analysis}[/dim]")
-            c.print()
+                # Per-task text summary (scrolls above the live panel)
+                for i, (ta, tb) in enumerate(zip(exp_result.trials_a, exp_result.trials_b)):
+                    preview = ta.task[:60] + "…" if len(ta.task) > 60 else ta.task
+                    ok_a = "[green]✓[/green]" if not ta.metrics.error else "[red]✗[/red]"
+                    ok_b = "[green]✓[/green]" if not tb.metrics.error else "[red]✗[/red]"
+                    c.print(
+                        f"  T{i+1} "
+                        f"{ok_a}[green]{ta.metrics.latency_ms/1000:.1f}s {ta.metrics.total_tokens}tok[/green]"
+                        f"  {ok_b}[blue]{tb.metrics.latency_ms/1000:.1f}s {tb.metrics.total_tokens}tok[/blue]"
+                        f"  [dim]{preview!r}[/dim]"
+                    )
 
-            # ── 4. Update best ───────────────────────────────────────────────
-            winner_config = exp.agent_b if evaluation.winner == "b" else exp.agent_a
-            winner_score = evaluation.avg_score_b if evaluation.winner == "b" else evaluation.avg_score_a
+                # Save to store
+                try:
+                    self._store.save_result(exp_result)
+                except Exception:
+                    pass  # non-fatal
 
-            if winner_score > result.best_score:
-                result.best_config = winner_config
-                result.best_score = winner_score
-                c.print(f"  [green]New best config: {winner_config.name} (score={winner_score:.1f})[/green]")
+                trial_cost = sum(t.metrics.estimated_cost_usd for t in exp_result.trials_a + exp_result.trials_b)
+                result.total_cost_usd += trial_cost
 
-            # Record step
-            result.steps.append({
-                "step": step,
-                "result": exp_result,
-                "eval": evaluation,
-            })
-            history.append((step, evaluation))
-            result.total_iterations = iteration
-            c.print(f"  [dim]Cumulative cost: ${result.total_cost_usd:.4f}[/dim]")
-            c.print()
+                # ── 3. Evaluate ──────────────────────────────────────────────
+                eval_task = phase_progress.add_task(
+                    f"[yellow]Iter {iteration}[/yellow]  Evaluating…"
+                )
+                try:
+                    evaluation = self._evaluator.evaluate(exp_result, program)
+                except Exception as exc:
+                    phase_progress.update(eval_task, description=f"[red]Iter {iteration}  Eval failed: {exc}[/red]")
+                    phase_progress.stop_task(eval_task)
+                    break
+
+                eval_cost = len(exp_result.trials_a + exp_result.trials_b) * self._EVAL_COST_EST + 0.003
+                result.total_cost_usd += eval_cost
+
+                is_b_winner = evaluation.winner == "b"
+                delta = evaluation.avg_score_b - evaluation.avg_score_a
+                delta_str = f"+{delta:.1f}" if delta >= 0 else f"{delta:.1f}"
+                winner_color = "blue" if is_b_winner else "green"
+                winner_name = exp.agent_b.name if is_b_winner else exp.agent_a.name
+                winner_label = "B" if is_b_winner else "A"
+
+                phase_progress.update(
+                    eval_task,
+                    description=(
+                        f"[dim]Iter {iteration}[/dim]  [bold]Eval[/bold]  "
+                        f"Winner=[bold {winner_color}]{winner_label}: {winner_name}[/bold {winner_color}]"
+                        f" ({delta_str}pts)"
+                    ),
+                )
+                phase_progress.stop_task(eval_task)
+
+                color_a = "green" if evaluation.winner == "a" else "dim"
+                color_b = "blue" if is_b_winner else "dim"
+                c.print(
+                    f"  [bold cyan]Scores[/bold cyan]  "
+                    f"A=[{color_a}]{evaluation.avg_score_a:.1f}[/{color_a}]  "
+                    f"B=[{color_b}]{evaluation.avg_score_b:.1f}[/{color_b}]  "
+                    f"Winner=[bold {winner_color}]{winner_label}: {winner_name}[/bold {winner_color}]"
+                    f" ({delta_str}pts, conf={evaluation.confidence:.2f})"
+                )
+                c.print(f"  [dim]{evaluation.analysis}[/dim]")
+
+                # ── 4. Update best ───────────────────────────────────────────
+                winner_config = exp.agent_b if is_b_winner else exp.agent_a
+                winner_score = evaluation.avg_score_b if is_b_winner else evaluation.avg_score_a
+
+                if winner_score > result.best_score:
+                    result.best_config = winner_config
+                    result.best_score = winner_score
+                    c.print(f"  [green]★ New best: {winner_config.name} (score={winner_score:.1f})[/green]")
+
+                result.steps.append({"step": step, "result": exp_result, "eval": evaluation})
+                history.append((step, evaluation))
+                result.total_iterations = iteration
+
+                # Advance overall bar + refresh budget display
+                overall_progress.advance(overall_task)
+                overall_progress.update(
+                    overall_task,
+                    budget=f"[dim]${result.total_cost_usd:.3f}/${max_cost_usd:.2f}[/dim]",
+                )
+                c.print()
 
         # ── Final summary ────────────────────────────────────────────────────
         c.print(Rule("[bold cyan]Research Complete[/bold cyan]", style="cyan"))
-        result.summary = self._generate_summary(result)
-        c.print(result.summary)
+        result.summary = self._generate_summary(result, lang=lang)
+        c.print(Markdown(result.summary))
         c.print()
 
         if result.best_config:
@@ -199,7 +314,7 @@ class AutoResearchLoop:
         c.print(f"\n[dim]Total iterations: {result.total_iterations} | Total cost: ${result.total_cost_usd:.4f}[/dim]")
         return result
 
-    def _generate_summary(self, result: AutoResearchResult) -> str:
+    def _generate_summary(self, result: AutoResearchResult, lang: str = "en") -> str:
         if not result.steps:
             return "No experiments completed."
 
@@ -207,29 +322,37 @@ class AutoResearchLoop:
         for s in result.steps:
             step: OptimizationStep = s["step"]
             ev: ExperimentEvaluation = s["eval"]
+            delta = ev.avg_score_b - ev.avg_score_a
+            conclusive = ev.confidence >= 0.6 and abs(delta) >= 2
             history_lines.append(
-                f"- Step {step.step_number}: {step.hypothesis[:80]} → winner={ev.winner}, "
-                f"A={ev.avg_score_a:.1f}, B={ev.avg_score_b:.1f}"
+                f"- Step {step.step_number} (conf={ev.confidence:.2f}, delta={delta:+.1f}pts, "
+                f"{'CONCLUSIVE' if conclusive else 'INCONCLUSIVE'}): "
+                f"{step.hypothesis[:80]}\n"
+                f"  → winner={ev.winner}, A={ev.avg_score_a:.1f}, B={ev.avg_score_b:.1f}\n"
+                f"  → analysis: {ev.analysis}"
             )
 
-        prompt = f"""Summarize the key findings from this automated agent research session.
+        prompt = f"""You are summarizing an automated agent research session. Be analytically rigorous.
 
 OBJECTIVE: {result.program.objective}
 
-EXPERIMENT HISTORY:
+EXPERIMENT HISTORY (with confidence and conclusiveness flags):
 {chr(10).join(history_lines)}
 
 BEST CONFIG SCORE: {result.best_score:.1f}/100
 CONVERGED: {result.converged}
 
-Write a 3-5 sentence summary of:
-1. What was discovered (which changes helped and why)
-2. The best configuration found
-3. Recommended next steps (if not converged)
+Write a 4-6 sentence summary covering:
+1. Which changes produced CONCLUSIVE improvements (high confidence, meaningful delta) vs which were noise
+2. The best configuration and what specifically made it better
+3. Any surprising or counter-intuitive findings
+4. Recommended next steps — if results were mostly inconclusive, say so and suggest why
 
-Be concrete and actionable."""
+Do NOT blindly declare winners from low-confidence or near-zero-delta results.
+Be concrete, honest about uncertainty, and actionable.
+{("Reply in Simplified Chinese." if lang == "zh" else "")}"""
 
         try:
-            return sdk_call(prompt, model="claude-haiku-4-5").strip()
+            return sdk_call(prompt, model="claude-opus-4-6").strip()
         except Exception:
             return f"Completed {result.total_iterations} iteration(s). Best score: {result.best_score:.1f}/100."
