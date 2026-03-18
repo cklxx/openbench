@@ -1,0 +1,42 @@
+{
+  "run_id": "14321c42-c23c-47f6-b52d-44331fef71a8",
+  "experiment": {
+    "name": "concise_system_prompt_vs_none",
+    "description": "Testing whether an explicit conciseness-focused system prompt reduces token usage while maintaining answer quality compared to no system prompt.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "no system prompt vs explicit conciseness instruction prompt"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a concise Q&A assistant. Answer in as few words as possible while remaining accurate and complete. Use short sentences. No preamble, no filler phrases, no repetition of the question. If a single word or number suffices, give only that.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What is the capital of Australia?",
+      "Explain the difference between TCP and UDP in networking.",
+      "A store sells apples for $1.50 each. If I buy 7 apples and pay with a $20 bill, how much change do I get?",
+      "What are three common causes of a Python KeyError exception?",
+      "Who wrote the novel '1984' and in what year was it published?"
+    ],
+    "tags": [
+      "auto_research"
+    ]
+  },
+  "started_at": "2026-03-17T16:54:40.186891+00:00",
+  "finished_at": "2026-03-17T16:55:34.306318+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

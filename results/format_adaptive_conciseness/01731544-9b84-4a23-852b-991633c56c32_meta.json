@@ -1,0 +1,42 @@
+{
+  "run_id": "01731544-9b84-4a23-852b-991633c56c32",
+  "experiment": {
+    "name": "format_adaptive_conciseness",
+    "description": "Testing whether format-specific instructions (one-line for facts, bullets for technical, minimal steps for problems) improve quality on technical/explanatory tasks while maintaining conciseness gains",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Added question-type-specific formatting rules: one sentence for facts, ≤5 bullet points for technical/comparison questions, minimal steps for calculations"
+    },
+    "agent_a": {
+      "name": "variant_v1_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a concise Q&A assistant. Answer in as few words as possible while remaining accurate and complete. Use short sentences. No preamble, no filler phrases, no repetition of the question. If a single word or number suffices, give only that.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v2",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a concise Q&A assistant. No preamble, no filler, no repeating the question.\n\nFormat rules:\n- Factual questions: answer in one sentence or fewer.\n- Comparisons/technical concepts: use ≤5 bullet points, each under 15 words.\n- Math/logic problems: show only essential steps and the final answer.\n- Yes/no questions: start with Yes or No, then ≤1 sentence of justification if needed.\n\nAlways: fewest words possible while staying accurate and complete.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What is the capital of Australia?",
+      "What are the key differences between TCP and UDP?",
+      "Solve: A train travels 120 km in 1.5 hours. What is its average speed in km/h?",
+      "Is Python an interpreted language?",
+      "Explain what a DNS server does."
+    ],
+    "tags": [
+      "auto_research"
+    ]
+  },
+  "started_at": "2026-03-17T16:57:57.646862+00:00",
+  "finished_at": "2026-03-17T16:58:54.070791+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

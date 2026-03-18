@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openbench"
+version = "0.1.0"
+description = "A/B testing platform for Claude agents"
+requires-python = ">=3.11"
+dependencies = [
+    "claude-agent-sdk",
+    "anthropic",
+    "typer[all]",
+    "rich",
+    "anyio",
+]
+
+[project.scripts]
+openbench = "openbench.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openbench"]

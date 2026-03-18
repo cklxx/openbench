@@ -1,0 +1,41 @@
+{
+  "run_id": "2893ae60-f757-46f0-ba3d-fd3126cc298d",
+  "experiment": {
+    "name": "quicktest_system_prompt",
+    "description": "Quick E2E test: concise vs verbose system prompt with Haiku. No tools, 2 turns max, 2 simple tasks.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "no system prompt vs 'be very brief' system prompt"
+    },
+    "agent_a": {
+      "name": "no_system_prompt",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "brief_system_prompt",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Reply in one sentence only. Be extremely concise.",
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What is the capital of France?",
+      "What is 7 times 8?"
+    ],
+    "tags": [
+      "quicktest",
+      "system_prompt",
+      "haiku"
+    ]
+  },
+  "started_at": "2026-03-17T16:30:22.804788+00:00",
+  "finished_at": "2026-03-17T16:30:33.941031+00:00",
+  "num_tasks": 2,
+  "trials_a_count": 2,
+  "trials_b_count": 2
+}

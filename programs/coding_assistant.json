@@ -1,0 +1,15 @@
+{
+  "objective": "Find the best system prompt for a coding assistant that maximizes correctness and code quality while staying concise",
+  "domain": "coding assistant",
+  "optimization_targets": ["quality", "conciseness"],
+  "constraints": {
+    "model": "claude-haiku-4-5",
+    "max_turns": 3,
+    "allowed_tools": [],
+    "max_iterations": 3,
+    "max_cost_usd": 1.5
+  },
+  "eval_rubric": "Score: task_completion (did the agent write working code?), code_quality (is the code clean, idiomatic, correct?), conciseness (is it brief without sacrificing clarity?)",
+  "context": "The agent will be used in an IDE to help developers write Python code quickly.",
+  "created_at": "2026-03-18T00:00:00+00:00"
+}
