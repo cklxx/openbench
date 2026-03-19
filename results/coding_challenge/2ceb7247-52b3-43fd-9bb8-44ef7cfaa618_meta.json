@@ -1,0 +1,122 @@
+{
+  "run_id": "2ceb7247-52b3-43fd-9bb8-44ef7cfaa618",
+  "experiment": {
+    "name": "coding_challenge",
+    "description": "Implement algorithms from spec + pass test suites. haiku vs sonnet: does model capability matter for implementation tasks?",
+    "diff": {
+      "field": "model",
+      "description": "claude-haiku-4-5 vs claude-sonnet-4-6 on coding challenges"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Implement the function/class in the spec file. Run the test file to verify. If tests fail, fix and re-run until all pass.",
+      "allowed_tools": [
+        "Read",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Implement the function/class in the spec file. Run the test file to verify. If tests fail, fix and re-run until all pass.",
+      "allowed_tools": [
+        "Read",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Write"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Implement spiral_order in spec_spiral.py and run test_spiral.py to verify.",
+        "expected": "ALL PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "matrix",
+          "traversal"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Implement encode and decode in spec_rle.py and run test_rle.py to verify.",
+        "expected": "ALL PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "string",
+          "encoding"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Implement generate_parens in spec_parens.py and run test_parens.py to verify.",
+        "expected": "ALL PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "recursion",
+          "backtracking"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Implement the Trie class in spec_trie.py and run test_trie.py to verify.",
+        "expected": "ALL PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "data-structure",
+          "trie"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Implement lcs in spec_lcs.py and run test_lcs.py to verify.",
+        "expected": "ALL PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "dynamic-programming",
+          "lcs"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "coding-challenge",
+      "implementation",
+      "model-comparison"
+    ],
+    "num_samples": 1,
+    "setup_files": {
+      "spec_spiral.py": "\"\"\"\nImplement spiral_order(matrix) that returns elements in spiral order.\n\nExample:\n  Input:  [[1,2,3],\n           [4,5,6],\n           [7,8,9]]\n  Output: [1,2,3,6,9,8,7,4,5]\n\n  Input:  [[1,2,3,4],\n           [5,6,7,8],\n           [9,10,11,12]]\n  Output: [1,2,3,4,8,12,11,10,9,5,6,7]\n\"\"\"\ndef spiral_order(matrix):\n    raise NotImplementedError(\"Implement this\")\n",
+      "test_spiral.py": "from spec_spiral import spiral_order\n\nassert spiral_order([[1,2,3],[4,5,6],[7,8,9]]) == [1,2,3,6,9,8,7,4,5]\nassert spiral_order([[1,2,3,4],[5,6,7,8],[9,10,11,12]]) == [1,2,3,4,8,12,11,10,9,5,6,7]\nassert spiral_order([[1]]) == [1]\nassert spiral_order([[1,2],[3,4]]) == [1,2,4,3]\nassert spiral_order([]) == []\nassert spiral_order([[1,2,3]]) == [1,2,3]  # single row\nassert spiral_order([[1],[2],[3]]) == [1,2,3]  # single column\nprint(\"spiral: ALL PASSED\")\n",
+      "spec_rle.py": "\"\"\"\nImplement:\n  encode(s) -> list of (char, count) tuples\n  decode(pairs) -> string\n\nExample:\n  encode(\"aaabbc\") -> [(\"a\",3), (\"b\",2), (\"c\",1)]\n  decode([(\"a\",3), (\"b\",2), (\"c\",1)]) -> \"aaabbc\"\n\nEdge cases: empty string, single char, no consecutive repeats.\n\"\"\"\ndef encode(s):\n    raise NotImplementedError\n\ndef decode(pairs):\n    raise NotImplementedError\n",
+      "test_rle.py": "from spec_rle import encode, decode\n\nassert encode(\"aaabbc\") == [(\"a\",3), (\"b\",2), (\"c\",1)]\nassert encode(\"\") == []\nassert encode(\"a\") == [(\"a\",1)]\nassert encode(\"abcabc\") == [(\"a\",1),(\"b\",1),(\"c\",1),(\"a\",1),(\"b\",1),(\"c\",1)]\nassert decode([(\"a\",3), (\"b\",2)]) == \"aaabb\"\nassert decode([]) == \"\"\nassert decode(encode(\"hello world\")) == \"hello world\"\nprint(\"rle: ALL PASSED\")\n",
+      "spec_parens.py": "\"\"\"\nImplement generate_parens(n) that returns all valid combinations\nof n pairs of parentheses, sorted lexicographically.\n\nExample:\n  generate_parens(1) -> [\"()\"]\n  generate_parens(2) -> [\"(())\", \"()()\"]\n  generate_parens(3) -> [\"((()))\", \"(()())\", \"(())()\", \"()(())\", \"()()()\"]\n\"\"\"\ndef generate_parens(n):\n    raise NotImplementedError\n",
+      "test_parens.py": "from spec_parens import generate_parens\n\nassert generate_parens(0) == [\"\"]\nassert generate_parens(1) == [\"()\"]\nassert generate_parens(2) == [\"(())\", \"()()\"]\nassert generate_parens(3) == [\"((()))\", \"(()())\", \"(())()\", \"()(())\", \"()()()\"]\nassert len(generate_parens(4)) == 14  # Catalan number C(4) = 14\nprint(\"parens: ALL PASSED\")\n",
+      "spec_trie.py": "\"\"\"\nImplement a Trie (prefix tree) with:\n  insert(word)        — add a word\n  search(word) -> bool — exact match\n  starts_with(prefix) -> list[str] — all words with this prefix, sorted\n\nExample:\n  t = Trie()\n  t.insert(\"apple\")\n  t.insert(\"app\")\n  t.insert(\"application\")\n  t.insert(\"banana\")\n  t.search(\"app\") -> True\n  t.search(\"ap\") -> False\n  t.starts_with(\"app\") -> [\"app\", \"apple\", \"application\"]\n  t.starts_with(\"ban\") -> [\"banana\"]\n  t.starts_with(\"xyz\") -> []\n\"\"\"\nclass Trie:\n    def __init__(self):\n        raise NotImplementedError\n\n    def insert(self, word):\n        raise NotImplementedError\n\n    def search(self, word):\n        raise NotImplementedError\n\n    def starts_with(self, prefix):\n        raise NotImplementedError\n",
+      "test_trie.py": "from spec_trie import Trie\n\nt = Trie()\nt.insert(\"apple\")\nt.insert(\"app\")\nt.insert(\"application\")\nt.insert(\"banana\")\nt.insert(\"band\")\n\nassert t.search(\"app\") == True\nassert t.search(\"apple\") == True\nassert t.search(\"ap\") == False\nassert t.search(\"\") == False\nassert t.starts_with(\"app\") == [\"app\", \"apple\", \"application\"]\nassert t.starts_with(\"ban\") == [\"banana\", \"band\"]\nassert t.starts_with(\"xyz\") == []\nassert t.starts_with(\"\") == [\"app\", \"apple\", \"application\", \"banana\", \"band\"]\nprint(\"trie: ALL PASSED\")\n",
+      "spec_lcs.py": "\"\"\"\nImplement lcs(s1, s2) that returns the longest common subsequence\n(not substring!) of two strings. If multiple LCS exist, return any one.\n\nExample:\n  lcs(\"ABCBDAB\", \"BDCAB\") -> \"BCAB\" (length 4)\n  lcs(\"abc\", \"def\") -> \"\"\n  lcs(\"abc\", \"abc\") -> \"abc\"\n\"\"\"\ndef lcs(s1, s2):\n    raise NotImplementedError\n",
+      "test_lcs.py": "from spec_lcs import lcs\n\n# Check LCS correctness by verifying length and subsequence property\ndef is_subsequence(sub, s):\n    it = iter(s)\n    return all(c in it for c in sub)\n\nr1 = lcs(\"ABCBDAB\", \"BDCAB\")\nassert len(r1) == 4 and is_subsequence(r1, \"ABCBDAB\") and is_subsequence(r1, \"BDCAB\"), f\"Got {r1}\"\n\nassert lcs(\"abc\", \"def\") == \"\"\nassert lcs(\"abc\", \"abc\") == \"abc\"\nassert lcs(\"\", \"abc\") == \"\"\nassert lcs(\"a\", \"a\") == \"a\"\n\nr2 = lcs(\"AGGTAB\", \"GXTXAYB\")\nassert len(r2) == 4 and is_subsequence(r2, \"AGGTAB\") and is_subsequence(r2, \"GXTXAYB\"), f\"Got {r2}\"\n\nprint(\"lcs: ALL PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T08:06:24.904865+00:00",
+  "finished_at": "2026-03-19T08:08:47.058890+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

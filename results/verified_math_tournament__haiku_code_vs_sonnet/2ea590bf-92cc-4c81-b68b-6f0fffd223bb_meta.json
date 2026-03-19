@@ -1,0 +1,119 @@
+{
+  "run_id": "2ea590bf-92cc-4c81-b68b-6f0fffd223bb",
+  "experiment": {
+    "name": "verified_math_tournament__haiku_code_vs_sonnet",
+    "description": "3-way tournament with ALL answers verified by Python. haiku vs haiku+Bash vs sonnet on 10 tasks spanning easy→very hard.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "haiku_code vs sonnet"
+    },
+    "agent_a": {
+      "name": "haiku_code",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You have Bash. For every math problem, write a Python script to compute the answer, run it, then report the result. Always verify with code.",
+      "allowed_tools": [
+        "Bash"
+      ],
+      "max_turns": 6,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "There are 35 animals (chickens and rabbits) with 94 feet total. Chickens have 2 feet, rabbits have 4. How many chickens and how many rabbits? Give both numbers.",
+        "expected": "23 chickens and 12 rabbits",
+        "difficulty": "easy",
+        "check_fn": "\"23\" in output and \"12\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "A tank fills at 3.7 liters per minute. After 23 minutes, a drain opens removing 1.2 liters per minute (filling continues). How many liters after 40 minutes total? One decimal place.",
+        "expected": "127.6",
+        "difficulty": "medium",
+        "check_fn": "\"127.6\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "You invest $2,500 at 6% annual interest compounded quarterly. After exactly 3 years, what is the total? Round to nearest cent.",
+        "expected": "$2,989.05",
+        "difficulty": "medium",
+        "check_fn": "\"2989.05\" in output or \"2,989.05\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "5-letter arrangements of {A,B,C,D,E} (no repeats) where A is neither first nor last. How many such arrangements? Single number.",
+        "expected": "72",
+        "difficulty": "medium",
+        "check_fn": "\"72\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "A ball drops from 243 cm. Each bounce reaches 2/3 previous height. Total distance (up+down) from drop until hitting ground after 5th bounce? Exact answer in cm.",
+        "expected": "1087",
+        "difficulty": "hard",
+        "check_fn": "\"1087\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "What is the remainder when 7^100 is divided by 13? Single number.",
+        "expected": "9",
+        "difficulty": "hard",
+        "check_fn": "\"9\" in output.split()[-3:] or \"= 9\" in output or \"is 9\" in output.lower() or output.strip().endswith(\"9\")"
+      },
+      {
+        "__task__": true,
+        "prompt": "What is the sum of ALL digits of ALL integers from 1 to 999? For example, 123 contributes 1+2+3=6. Give the total.",
+        "expected": "13500",
+        "difficulty": "hard",
+        "check_fn": "\"13500\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "F(n) is the Fibonacci sequence: F(1)=1, F(2)=1, F(n)=F(n-1)+F(n-2). What are the last two digits of F(50)? Give a number.",
+        "expected": "25",
+        "difficulty": "hard",
+        "check_fn": "\"25\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "In a room of 4 people, each person's birthday is equally likely to be any of 7 days of the week. What is the probability that at least 2 people share the same birthday-day-of-week? Express as a fraction with denominator 2401.",
+        "expected": "1561/2401",
+        "difficulty": "very_hard",
+        "check_fn": "\"1561\" in output and \"2401\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "A 4×4 grid has 16 cells. How many ways can you place 4 non-attacking rooks on this grid? (Non-attacking means no two rooks share a row or column.) Give a single number.",
+        "expected": "24",
+        "difficulty": "very_hard",
+        "check_fn": "\"24\" in output"
+      }
+    ],
+    "tags": [
+      "verified-math",
+      "model-vs-tool",
+      "tournament",
+      "objective",
+      "tournament",
+      "verified_math_tournament"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T08:06:24.906158+00:00",
+  "finished_at": "2026-03-19T08:08:23.108974+00:00",
+  "num_tasks": 10,
+  "trials_a_count": 10,
+  "trials_b_count": 10
+}
