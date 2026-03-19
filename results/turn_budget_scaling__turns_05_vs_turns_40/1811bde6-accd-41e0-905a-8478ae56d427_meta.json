@@ -1,0 +1,72 @@
+{
+  "run_id": "1811bde6-accd-41e0-905a-8478ae56d427",
+  "experiment": {
+    "name": "turn_budget_scaling__turns_05_vs_turns_40",
+    "description": "Same URL shortener task with max_turns 5/10/20/40. Tests where diminishing returns kick in.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "turns_05 vs turns_40"
+    },
+    "agent_a": {
+      "name": "turns_05",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are building a Python module. Read the test file first to understand all requirements, then implement the module and run tests to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 5,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "turns_40",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are building a Python module. Read the test file first to understand all requirements, then implement the module and run tests to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 40,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Build a URL shortener in shortener.py. Requirements:\n- URLShortener class with methods: shorten(url, custom_code=None), expand(code), get_clicks(code), stats()\n- shorten() returns a short alphanumeric code (≥4 chars)\n- Same URL always returns same code (idempotent)\n- expand() returns original URL or None, increments click count\n- get_clicks() returns click count for a code\n- stats() returns dict with total_urls and total_clicks\n- Validate URLs (must start with http:// or https://)\n- Optional: custom_code parameter for custom aliases\nRun test_shortener.py to verify. All tests must pass.",
+        "expected": "ALL TESTS PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "multi-turn",
+          "implementation",
+          "url-shortener"
+        ],
+        "check_fn": "\"ALL TESTS PASSED\" in output or (\"passed\" in output.lower() and \"fail\" not in output.lower())"
+      }
+    ],
+    "tags": [
+      "turn-budget",
+      "scaling",
+      "multi-turn",
+      "tournament",
+      "turn_budget_scaling"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "test_shortener.py": "\"\"\"Comprehensive test suite for URL shortener.\"\"\"\nimport sys\nsys.path.insert(0, \".\")\n\nfrom shortener import URLShortener\n\ndef test_basic():\n    s = URLShortener()\n    code = s.shorten(\"https://example.com\")\n    assert isinstance(code, str) and len(code) >= 4, f\"Bad code: {code}\"\n    assert s.expand(code) == \"https://example.com\"\n    print(\"  basic: OK\")\n\ndef test_deterministic():\n    s = URLShortener()\n    c1 = s.shorten(\"https://example.com\")\n    c2 = s.shorten(\"https://example.com\")\n    assert c1 == c2, \"Same URL should return same code\"\n    print(\"  deterministic: OK\")\n\ndef test_different_urls():\n    s = URLShortener()\n    c1 = s.shorten(\"https://a.com\")\n    c2 = s.shorten(\"https://b.com\")\n    assert c1 != c2, \"Different URLs must have different codes\"\n    print(\"  different_urls: OK\")\n\ndef test_expand_unknown():\n    s = URLShortener()\n    result = s.expand(\"nonexistent\")\n    assert result is None, f\"Unknown code should return None, got {result}\"\n    print(\"  expand_unknown: OK\")\n\ndef test_click_tracking():\n    s = URLShortener()\n    code = s.shorten(\"https://tracked.com\")\n    assert s.get_clicks(code) == 0\n    s.expand(code)\n    s.expand(code)\n    s.expand(code)\n    assert s.get_clicks(code) == 3, f\"Expected 3 clicks, got {s.get_clicks(code)}\"\n    print(\"  click_tracking: OK\")\n\ndef test_stats():\n    s = URLShortener()\n    s.shorten(\"https://a.com\")\n    s.shorten(\"https://b.com\")\n    code = s.shorten(\"https://c.com\")\n    s.expand(code)\n    stats = s.stats()\n    assert stats[\"total_urls\"] == 3\n    assert stats[\"total_clicks\"] == 1\n    print(\"  stats: OK\")\n\ndef test_validation():\n    s = URLShortener()\n    try:\n        s.shorten(\"\")\n        assert False, \"Empty URL should raise ValueError\"\n    except ValueError:\n        pass\n    try:\n        s.shorten(\"not-a-url\")\n        assert False, \"Invalid URL should raise ValueError\"\n    except ValueError:\n        pass\n    print(\"  validation: OK\")\n\ndef test_many_urls():\n    s = URLShortener()\n    codes = set()\n    for i in range(100):\n        code = s.shorten(f\"https://example.com/page/{i}\")\n        codes.add(code)\n    assert len(codes) == 100, f\"Expected 100 unique codes, got {len(codes)}\"\n    # Verify all expand correctly\n    for i in range(100):\n        code = s.shorten(f\"https://example.com/page/{i}\")\n        assert s.expand(code) == f\"https://example.com/page/{i}\"\n    print(\"  many_urls: OK\")\n\ndef test_custom_code():\n    \"\"\"Optional: custom alias support.\"\"\"\n    s = URLShortener()\n    try:\n        code = s.shorten(\"https://custom.com\", custom_code=\"myalias\")\n        assert code == \"myalias\"\n        assert s.expand(\"myalias\") == \"https://custom.com\"\n        # Custom code collision\n        try:\n            s.shorten(\"https://other.com\", custom_code=\"myalias\")\n            assert False, \"Duplicate custom code should raise ValueError\"\n        except ValueError:\n            pass\n        print(\"  custom_code: OK\")\n    except TypeError:\n        print(\"  custom_code: SKIP (not implemented)\")\n\nif __name__ == \"__main__\":\n    passed = 0\n    failed = 0\n    for name, func in list(globals().items()):\n        if name.startswith(\"test_\"):\n            try:\n                func()\n                passed += 1\n            except Exception as e:\n                print(f\"  {name}: FAIL — {e}\")\n                failed += 1\n    total = passed + failed\n    print(f\"\\nResults: {passed}/{total} passed\")\n    if failed == 0:\n        print(\"ALL TESTS PASSED\")\n    else:\n        print(f\"{failed} FAILED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T09:16:19.851636+00:00",
+  "finished_at": "2026-03-19T09:17:07.970389+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 3,
+  "trials_b_count": 3
+}

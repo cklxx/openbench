@@ -1,0 +1,70 @@
+{
+  "run_id": "e673fb26-f669-42b3-91b3-b6001d6965fd",
+  "experiment": {
+    "name": "multi_file_project",
+    "description": "Build a complete expression calculator (tokenizer + parser + evaluator + variables). haiku vs sonnet at max_turns=30.",
+    "diff": {
+      "field": "model",
+      "description": "haiku vs sonnet on complex multi-file implementation"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Build a Python expression calculator in calc.py. Read test_calc.py first to understand all requirements. Implement a Calculator class with an eval(expr) method. Run tests after implementation. Fix any failures.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Build a Python expression calculator in calc.py. Read test_calc.py first to understand all requirements. Implement a Calculator class with an eval(expr) method. Run tests after implementation. Fix any failures.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Build a complete expression calculator in calc.py with:\n- Calculator class with eval(expression_string) method\n- Arithmetic: +, -, *, / with correct precedence\n- Parentheses support\n- Negative numbers\n- Decimal numbers\n- Variable assignment (x = 5) and usage\n- Error handling: division by zero, undefined variables, syntax errors\n\nRead test_calc.py for detailed requirements. Run it to verify.",
+        "expected": "ALL TESTS PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "parser",
+          "evaluator",
+          "multi-component"
+        ],
+        "check_fn": "\"ALL TESTS PASSED\" in output or (\"passed\" in output.lower() and \"0 FAILED\" not in output and \"fail\" not in output.lower().split(\"passed\")[0])"
+      }
+    ],
+    "tags": [
+      "multi-file",
+      "complex-build",
+      "long-horizon"
+    ],
+    "num_samples": 2,
+    "setup_files": {
+      "test_calc.py": "\"\"\"Comprehensive test suite for expression calculator.\"\"\"\nimport sys\nsys.path.insert(0, \".\")\n\nfrom calc import Calculator\n\ndef test_basic_arithmetic():\n    c = Calculator()\n    assert c.eval(\"2 + 3\") == 5\n    assert c.eval(\"10 - 4\") == 6\n    assert c.eval(\"3 * 7\") == 21\n    assert c.eval(\"20 / 4\") == 5.0\n    print(\"  basic_arithmetic: OK\")\n\ndef test_precedence():\n    c = Calculator()\n    assert c.eval(\"2 + 3 * 4\") == 14, f\"Got {c.eval('2 + 3 * 4')}\"\n    assert c.eval(\"10 - 2 * 3\") == 4\n    assert c.eval(\"6 / 2 + 1\") == 4.0\n    assert c.eval(\"2 * 3 + 4 * 5\") == 26\n    print(\"  precedence: OK\")\n\ndef test_parentheses():\n    c = Calculator()\n    assert c.eval(\"(2 + 3) * 4\") == 20\n    assert c.eval(\"((1 + 2) * (3 + 4))\") == 21\n    assert c.eval(\"(10 - (3 + 2)) * 2\") == 10\n    print(\"  parentheses: OK\")\n\ndef test_negative_numbers():\n    c = Calculator()\n    assert c.eval(\"-5 + 3\") == -2\n    assert c.eval(\"3 + -2\") == 1 or c.eval(\"3 + (-2)\") == 1\n    assert c.eval(\"-3 * -4\") == 12 or c.eval(\"(-3) * (-4)\") == 12\n    print(\"  negative_numbers: OK\")\n\ndef test_decimals():\n    c = Calculator()\n    assert abs(c.eval(\"3.14 * 2\") - 6.28) < 0.001\n    assert abs(c.eval(\"1.5 + 2.5\") - 4.0) < 0.001\n    print(\"  decimals: OK\")\n\ndef test_variables():\n    c = Calculator()\n    c.eval(\"x = 10\")\n    assert c.eval(\"x + 5\") == 15\n    assert c.eval(\"x * 2\") == 20\n    c.eval(\"y = x + 3\")\n    assert c.eval(\"y\") == 13\n    c.eval(\"x = 20\")  # reassignment\n    assert c.eval(\"x\") == 20\n    print(\"  variables: OK\")\n\ndef test_division_by_zero():\n    c = Calculator()\n    try:\n        c.eval(\"10 / 0\")\n        assert False, \"Should raise error for division by zero\"\n    except (ZeroDivisionError, ValueError, Exception):\n        pass\n    print(\"  division_by_zero: OK\")\n\ndef test_undefined_variable():\n    c = Calculator()\n    try:\n        c.eval(\"unknown_var + 1\")\n        assert False, \"Should raise error for undefined variable\"\n    except (NameError, ValueError, KeyError, Exception):\n        pass\n    print(\"  undefined_variable: OK\")\n\ndef test_syntax_error():\n    c = Calculator()\n    for bad_expr in [\"2 +\", \"* 3\", \"2 + + 3\", \"(2 + 3\", \"2 + 3)\"]:\n        try:\n            c.eval(bad_expr)\n            # Some might be handled differently\n        except Exception:\n            pass\n    print(\"  syntax_error: OK\")\n\ndef test_whitespace():\n    c = Calculator()\n    assert c.eval(\"  2+3  \") == 5\n    assert c.eval(\"2  *  3\") == 6\n    print(\"  whitespace: OK\")\n\ndef test_complex_expressions():\n    c = Calculator()\n    assert c.eval(\"(2 + 3) * (4 - 1) + 6 / 2\") == 18.0\n    c.eval(\"a = 5\")\n    c.eval(\"b = 3\")\n    assert c.eval(\"a * b + (a - b)\") == 17\n    print(\"  complex_expressions: OK\")\n\nif __name__ == \"__main__\":\n    passed = 0\n    failed = 0\n    for name, func in sorted(globals().items()):\n        if name.startswith(\"test_\"):\n            try:\n                func()\n                passed += 1\n            except Exception as e:\n                print(f\"  {name}: FAIL — {e}\")\n                failed += 1\n    total = passed + failed\n    print(f\"\\nResults: {passed}/{total} passed\")\n    if failed == 0:\n        print(\"ALL TESTS PASSED\")\n    else:\n        print(f\"{failed} FAILED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T09:16:19.850721+00:00",
+  "finished_at": "2026-03-19T09:17:14.274182+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 2,
+  "trials_b_count": 2
+}
