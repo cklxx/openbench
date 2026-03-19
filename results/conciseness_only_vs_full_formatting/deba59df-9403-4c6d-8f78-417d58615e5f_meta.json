@@ -1,0 +1,45 @@
+{
+  "run_id": "deba59df-9403-4c6d-8f78-417d58615e5f",
+  "experiment": {
+    "name": "conciseness_only_vs_full_formatting",
+    "description": "Testing whether a conciseness-only instruction matches the full context-aware formatting prompt, to isolate the active ingredient as recommended by Step 2 analysis.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Agent A uses the full context-aware formatting prompt (adapt format to context, avoid headers in casual contexts, match register). Agent B uses a stripped-down conciseness-only prompt that just says be concise and don't pad, without any context-adaptation or format-matching guidance."
+    },
+    "agent_a": {
+      "name": "variant_v2_formatting_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Adapt your response format and length to the context of each question. For casual or conversational questions, reply naturally without markdown headers, bullet points, or meta-commentary about your own response. For factual or analytical questions, be direct and concise — give the answer without exhaustive enumeration or unnecessary caveats. Never pad your response with filler. Match the register and tone the user sets.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v3_concise_only",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Be concise. Give the answer directly without filler, unnecessary caveats, or exhaustive enumeration. Do not add meta-commentary about your own response.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What are the three largest deserts in the world by area, and on which continents are they located?",
+      "Explain what a black hole is as if you're talking to your family at dinner.",
+      "Write a six-word story about loneliness.",
+      "How do you change a flat tire?",
+      "What's the difference between TCP and UDP? When would you use each?"
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T09:48:22.253563+00:00",
+  "finished_at": "2026-03-18T09:49:09.575106+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 25,
+  "trials_b_count": 25
+}

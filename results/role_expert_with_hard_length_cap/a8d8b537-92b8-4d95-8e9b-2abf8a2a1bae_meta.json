@@ -1,0 +1,44 @@
+{
+  "run_id": "a8d8b537-92b8-4d95-8e9b-2abf8a2a1bae",
+  "experiment": {
+    "name": "role_expert_with_hard_length_cap",
+    "description": "Testing a role-based expert summarizer persona with an explicit hard token-length constraint and a ban on meta-commentary, targeting the shared failure mode of self-reporting metadata observed in both previous agents.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Replace the two-pass assistant prompt with an expert-compressor role that keeps the internal two-pass logic but adds: (1) a hard 80-word output cap, (2) an explicit ban on preamble, meta-commentary, word counts, and self-assessment, and (3) an expert persona for authority and conciseness."
+    },
+    "agent_a": {
+      "name": "variant_v1_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a helpful assistant. When asked to compress text, follow this two-pass process: PASS 1 — Internally extract every distinct factual claim, relationship, and conclusion from the source text as a numbered list (do not output this list). PASS 2 — Rewrite those claims into the most token-efficient prose possible, combining related points and eliminating redundancy. Never add information not in the source. Never drop a factual claim. Prefer prose over bullet points. Aim for at least 60% length reduction from the original.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v2",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are an expert text compressor with 20 years of experience in information-dense technical writing. Your task: compress any input text to under 80 words while preserving every factual claim, number, name, and relationship. Internally, first identify all distinct facts, then synthesize them into maximally concise prose. Rules: (1) Never add information not in the source. (2) Never drop any factual claim. (3) Never include preamble, meta-commentary, word counts, compression ratios, or self-assessment of any kind. (4) Output ONLY the compressed text — nothing else. (5) Prefer dense prose over bullet points. (6) Combine related facts into compound sentences to save tokens.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Compress the following text, preserving all facts and meaning:\n\nThe James Webb Space Telescope (JWST) was launched on December 25, 2021, from Kourou, French Guiana, aboard an Ariane 5 rocket. It is a joint project of NASA, ESA, and CSA. The telescope orbits the Sun near the second Lagrange point (L2), approximately 1.5 million kilometers from Earth. Its primary mirror is 6.5 meters in diameter, composed of 18 hexagonal gold-plated beryllium segments. JWST observes in the infrared spectrum, ranging from 0.6 to 28.3 micrometers. The telescope's sunshield is roughly the size of a tennis court and provides passive cooling to below 50 Kelvin. The total project cost was approximately $10 billion over 25 years of development. JWST's four main instruments are NIRCam, NIRSpec, MIRI, and FGS/NIRISS. One of its first major discoveries was detecting carbon dioxide in the atmosphere of exoplanet WASP-39b in August 2022.",
+      "Compress the following text, preserving all facts and meaning:\n\nThe Treaty of Westphalia, signed in 1648, ended the Thirty Years' War in the Holy Roman Empire and the Eighty Years' War between Spain and the Dutch Republic. The treaty was negotiated in two cities: Osnabrück and Münster, in the Westphalia region of modern-day Germany. Negotiations involved 109 delegations representing European powers. Key provisions included: recognition of the sovereignty of the Dutch Republic, territorial adjustments granting France parts of Alsace, confirmation of the Peace of Augsburg's principle of cuius regio eius religio (whose realm, his religion), and the extension of religious toleration to Calvinists. The treaty established the principle of state sovereignty and non-interference in domestic affairs, which became foundational to modern international law. Sweden gained territories in northern Germany including Western Pomerania. The Holy Roman Emperor's power was significantly curtailed, as member states gained the right to conduct independent foreign policy. Approximately 8 million people died during the Thirty Years' War, representing about 30% of the population in affected regions.",
+      "Compress the following text, preserving all facts and meaning:\n\nSome critics argue that standardized testing does more harm than good in modern education. Proponents counter that standardized tests provide an objective, comparable measure of student achievement across schools and districts. Research by Koretz (2008) found that high-stakes testing leads to score inflation that does not reflect genuine learning gains. However, a 2015 meta-analysis by Lipsey et al. showed that schools using test-based accountability systems saw modest but statistically significant improvements in math scores (effect size d = 0.08). Teachers report spending 25-30% of instructional time on test preparation, which critics say narrows the curriculum. Meanwhile, equity advocates note that without standardized measures, achievement gaps affecting minority and low-income students may go undetected. The debate remains unresolved, with most education researchers favoring a balanced approach that combines standardized assessments with portfolio-based and formative evaluation methods.",
+      "Compress the following text, preserving all facts and meaning:\n\nAt 7:42 AM on March 3, 2024, a magnitude 5.8 earthquake struck the coastal city of Valmont, causing widespread structural damage. Mayor Elena Ruiz declared a state of emergency by 9:15 AM and requested federal disaster relief. 'We need immediate assistance — three hospitals are operating on backup generators and the main water treatment plant is offline,' Ruiz told reporters. FEMA dispatched 200 personnel and 50 truckloads of supplies, arriving by 6 PM the same day. Structural engineers assessed 1,200 buildings; 87 were condemned and 340 required major repairs. No fatalities were reported, but 42 people were hospitalized with injuries. Governor Mark Chen approved $15 million in emergency funds. Aftershocks of magnitude 3.1 and 2.7 followed at 11:03 AM and 2:30 PM respectively. Seismologist Dr. Anika Patel noted the quake occurred along a previously unmapped fault line, raising concerns about regional building codes."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T11:54:22.223574+00:00",
+  "finished_at": "2026-03-18T12:00:48.395741+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 4,
+  "trials_b_count": 4
+}

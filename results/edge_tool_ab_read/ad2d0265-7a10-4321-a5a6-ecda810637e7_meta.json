@@ -1,0 +1,45 @@
+{
+  "run_id": "ad2d0265-7a10-4321-a5a6-ecda810637e7",
+  "experiment": {
+    "name": "edge_tool_ab_read",
+    "description": "No-tool vs Read-tool on file-reading task",
+    "diff": {
+      "field": "allowed_tools",
+      "description": "[] vs ['Read']"
+    },
+    "agent_a": {
+      "name": "no_tools",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Answer questions about files in the working directory.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "has_read",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Answer questions about files in the working directory.",
+      "allowed_tools": [
+        "Read"
+      ],
+      "max_turns": 3,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      "Read the file named secret.txt and tell me the exact content."
+    ],
+    "tags": [],
+    "num_samples": 1,
+    "setup_files": {
+      "secret.txt": "THE_ANSWER_IS_FORTYTWO"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T03:42:59.917220+00:00",
+  "finished_at": "2026-03-19T03:43:12.153152+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 1,
+  "trials_b_count": 1
+}

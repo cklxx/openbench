@@ -172,7 +172,9 @@ Return ONLY valid JSON (no markdown wrapper):
 
         # Detect if we're testing tools and add hint
         diff_field = last_step.experiment.diff.field
-        tool_hint = self._tool_diff_hint(diff_field, list(best.allowed_tools), list(best.allowed_tools))
+        # Use available tools from program constraints as the candidate B tool set
+        candidate_tools = json.loads(tools_str) if isinstance(tools_str, str) else list(best.allowed_tools)
+        tool_hint = self._tool_diff_hint(diff_field, list(best.allowed_tools), candidate_tools)
 
         return f"""You are proposing the NEXT experiment in an automated research loop.
 

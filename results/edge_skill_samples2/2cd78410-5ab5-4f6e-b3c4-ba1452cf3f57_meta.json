@@ -1,0 +1,48 @@
+{
+  "run_id": "2cd78410-5ab5-4f6e-b3c4-ba1452cf3f57",
+  "experiment": {
+    "name": "edge_skill_samples2",
+    "description": "SkillConfig with num_samples=2 — tests concurrent resolution",
+    "diff": {
+      "field": "system_prompt",
+      "description": "SkillConfig vs None, 2 samples each"
+    },
+    "agent_a": {
+      "name": "skill_agent",
+      "model": "claude-haiku-4-5",
+      "system_prompt": {
+        "__skill__": true,
+        "name": "one_word_answer",
+        "version": "1.0.0",
+        "description": "Answer in exactly one word",
+        "system_prompt": "Answer with exactly ONE word. Nothing else.",
+        "required_tools": []
+      },
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      "What is the capital of France?"
+    ],
+    "tags": [],
+    "num_samples": 2,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T03:43:27.140342+00:00",
+  "finished_at": "2026-03-19T03:43:30.453285+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 2,
+  "trials_b_count": 2
+}

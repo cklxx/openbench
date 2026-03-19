@@ -1,0 +1,47 @@
+{
+  "run_id": "7f184db2-7fa8-4353-8130-0241689aafb3",
+  "experiment": {
+    "name": "length_constrained_compression",
+    "description": "Testing whether adding an explicit word-count ceiling to the baseline prompt improves information density by forcing tighter triage without the formatting overhead seen in structured extraction.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Appended an explicit 80-word maximum constraint to the baseline prompt"
+    },
+    "agent_a": {
+      "name": "baseline_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a summarization assistant. When given text, produce the most concise summary you can while retaining all important details. Use precise language, eliminate filler words and redundancy, and ensure every sentence contributes unique information. Do not include unnecessary qualifiers or restate points already made.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v2",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a summarization assistant. When given text, produce the most concise summary you can while retaining all important details. Use precise language, eliminate filler words and redundancy, and ensure every sentence contributes unique information. Do not include unnecessary qualifiers or restate points already made. Your summary must not exceed 100 words.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Summarize the following article:\n\nThe James Webb Space Telescope (JWST) launched on December 25, 2021, from Kourou, French Guiana, aboard an Ariane 5 rocket. It is the largest optical telescope in space, with a 6.5-meter primary mirror composed of 18 hexagonal gold-plated beryllium segments. The telescope orbits the Sun near the second Lagrange point (L2), approximately 1.5 million kilometers from Earth. JWST observes primarily in infrared wavelengths from 0.6 to 28.3 micrometers, using four main instruments: NIRCam, NIRSpec, MIRI, and FGS/NIRISS. The project cost approximately $10 billion and involved collaboration between NASA, ESA, and CSA over 20 years of development. Its sunshield, roughly the size of a tennis court, keeps instruments at operating temperatures below 50 Kelvin. Early observations have revealed previously unseen details of galaxy formation, exoplanet atmospheres containing CO2, and stellar nurseries in the Carina Nebula. The telescope is expected to operate for at least 10 years, with enough fuel potentially extending its mission to 20 years.",
+      "Summarize the following narrative:\n\nIn 1928, Alexander Fleming returned from vacation to his laboratory at St. Mary's Hospital in London and noticed that a petri dish containing Staphylococcus bacteria had been contaminated by a mold, later identified as Penicillium notatum. A clear zone around the mold showed that bacterial growth was inhibited. Fleming published his findings in 1929 but lacked the resources to purify the active substance. In 1938, Howard Florey and Ernst Boris Chain at Oxford University revisited Fleming's work and successfully isolated penicillin. By 1941, they conducted the first human trials, treating a policeman with a severe facial infection — he initially improved but died when supplies ran out. Large-scale production began in the United States with help from the US Department of Agriculture's laboratory in Peoria, Illinois, where a moldy cantaloupe yielded a high-producing Penicillium strain. By D-Day in June 1944, enough penicillin was available to treat all wounded Allied soldiers. Fleming, Florey, and Chain shared the 1945 Nobel Prize in Physiology or Medicine. Penicillin has since saved an estimated 200 million lives, though antibiotic resistance now threatens its efficacy, with methicillin-resistant Staphylococcus aureus (MRSA) emerging as a major concern.",
+      "Summarize the following legal text:\n\nThe General Data Protection Regulation (GDPR), enacted by the European Parliament and Council as Regulation (EU) 2016/679, took effect on May 25, 2018, replacing the 1995 Data Protection Directive. It applies to all organizations processing personal data of EU residents, regardless of the organization's location. Key principles include lawfulness, fairness, and transparency; purpose limitation; data minimization; accuracy; storage limitation; integrity and confidentiality; and accountability. Individuals have rights including access to their data, rectification, erasure ('right to be forgotten'), restriction of processing, data portability, and objection to processing. Organizations must appoint a Data Protection Officer if they process data on a large scale, conduct Data Protection Impact Assessments for high-risk processing, and report data breaches to supervisory authorities within 72 hours. Fines for non-compliance can reach up to €20 million or 4% of annual global turnover, whichever is higher. The regulation introduced the concept of 'privacy by design,' requiring data protection to be integrated into systems from the outset. Cross-border data transfers outside the EU are restricted unless the receiving country ensures adequate protection or appropriate safeguards are in place.",
+      "Summarize the following opinion piece:\n\nRemote work has fundamentally reshaped the modern workplace, and the debate over its permanence continues to divide employers and employees. Proponents argue that remote work increases productivity by eliminating commute times averaging 54 minutes daily, reduces office overhead costs by 30-40%, and expands the talent pool beyond geographic constraints. A Stanford study found remote workers were 13% more productive. Critics counter that remote work erodes company culture, hampers spontaneous collaboration, and disproportionately affects junior employees who miss mentorship opportunities. Mental health concerns are mixed: while flexibility reduces stress for parents and caregivers, isolation and blurred work-life boundaries increase burnout rates by 20% according to Gallup. Hybrid models — typically 2-3 days in office — have emerged as the dominant compromise, adopted by 74% of Fortune 500 companies. However, return-to-office mandates from companies like Amazon and JPMorgan suggest the pendulum may swing back. The real question isn't whether remote work is better or worse, but whether organizations can design intentional systems that capture its benefits while mitigating its costs. The future likely belongs to companies that treat flexibility as a strategic capability rather than a temporary accommodation.",
+      "Summarize the following short passage:\n\nWater boils at 100 degrees Celsius at standard atmospheric pressure. At higher altitudes, where atmospheric pressure is lower, water boils at a lower temperature. For example, in Denver, Colorado, at approximately 1,600 meters elevation, water boils at about 95 degrees Celsius.",
+      "Summarize the following technical description:\n\nCRISPR-Cas9 is a genome editing technology adapted from a natural defense mechanism in bacteria. Bacteria capture snippets of DNA from invading viruses and store them as 'spacers' between CRISPR (Clustered Regularly Interspaced Short Palindromic Repeats) sequences. When the same virus attacks again, bacteria produce RNA segments from these spacers that guide the Cas9 protein to the matching viral DNA, which Cas9 then cuts. Scientists Jennifer Doudna and Emmanuelle Charpentier demonstrated in 2012 that this system could be reprogrammed using synthetic guide RNA to cut any DNA sequence. The technology works by designing a 20-nucleotide guide RNA complementary to the target DNA, which forms a complex with Cas9. The Cas9 protein unwinds the double helix at the target site, and if the guide RNA matches and a PAM (Protospacer Adjacent Motif) sequence is present, Cas9 makes a double-strand break. The cell's repair mechanisms then either disrupt the gene (via non-homologous end joining) or insert new genetic material (via homology-directed repair with a donor template). Applications include treating sickle cell disease, engineering drought-resistant crops, creating gene drives to control malaria-carrying mosquitoes, and developing diagnostic tools like SHERLOCK for detecting viral RNA. Off-target effects, where Cas9 cuts unintended sites, remain a challenge addressed by high-fidelity Cas9 variants and base editors.",
+      "Summarize the following multi-source report:\n\nSource 1 (Reuters, March 2024): Global EV sales reached 14 million units in 2023, a 35% increase from 2022. China accounted for 60% of sales. Source 2 (Bloomberg, February 2024): EV battery costs fell to $139/kWh, down 14% year-over-year, with LFP chemistry gaining market share over NMC. Source 3 (IEA, April 2024): Despite growth, EVs still represent only 18% of new car sales globally. Charging infrastructure remains uneven, with Europe adding 150,000 public chargers in 2023 while the US added only 30,000."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T12:12:54.739704+00:00",
+  "finished_at": "2026-03-18T12:14:10.288602+00:00",
+  "num_tasks": 7,
+  "trials_a_count": 7,
+  "trials_b_count": 7
+}

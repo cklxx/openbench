@@ -1,0 +1,50 @@
+{
+  "run_id": "3871d363-c310-458e-89ba-adcf3c4085fc",
+  "experiment": {
+    "name": "edge_setup_fail",
+    "description": "setup_script failure with SkillConfig — tests error agent_input",
+    "diff": {
+      "field": "system_prompt",
+      "description": "skill vs baseline under setup failure"
+    },
+    "agent_a": {
+      "name": "skill_agent",
+      "model": "claude-haiku-4-5",
+      "system_prompt": {
+        "__skill__": true,
+        "name": "error_path_skill",
+        "version": "1.0.0",
+        "description": "Tests error path",
+        "system_prompt": "You are a debugging assistant.",
+        "required_tools": []
+      },
+      "allowed_tools": [
+        "Read"
+      ],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      "What went wrong?"
+    ],
+    "tags": [],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": "exit 1"
+  },
+  "started_at": "2026-03-19T03:43:46.760738+00:00",
+  "finished_at": "2026-03-19T03:43:46.781532+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 1,
+  "trials_b_count": 1
+}

@@ -1,0 +1,45 @@
+{
+  "run_id": "fef1c335-c19d-4dcc-a67f-8d8eafd5a3e7",
+  "experiment": {
+    "name": "direct_vs_structured_compression",
+    "description": "Testing whether a structured extraction prompt produces better summaries than a simple direct compression prompt.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Simple compression instruction vs structured extract-then-compress instruction"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a summarization assistant. When given text, produce the most concise summary you can while retaining all important details. Use precise language, eliminate filler words and redundancy, and ensure every sentence contributes unique information. Do not include unnecessary qualifiers or restate points already made.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a summarization assistant. When given text, follow this process: (1) Identify the core facts, claims, and conclusions in the text. (2) Rank them by importance. (3) Produce a final summary that includes only the top-ranked information, using precise language, eliminating filler words and redundancy, and ensuring every sentence contributes unique information.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Summarize the following article:\n\nThe James Webb Space Telescope (JWST) launched on December 25, 2021, from Kourou, French Guiana, aboard an Ariane 5 rocket. It is the largest optical telescope in space, with a 6.5-meter primary mirror composed of 18 hexagonal gold-plated beryllium segments. The telescope orbits the Sun near the second Lagrange point (L2), approximately 1.5 million kilometers from Earth. JWST observes primarily in infrared wavelengths from 0.6 to 28.3 micrometers, using four main instruments: NIRCam, NIRSpec, MIRI, and FGS/NIRISS. The project cost approximately $10 billion and involved collaboration between NASA, ESA, and CSA over 20 years of development. Its sunshield, roughly the size of a tennis court, keeps instruments at operating temperatures below 50 Kelvin. Early observations have revealed previously unseen details of galaxy formation, exoplanet atmospheres containing CO2, and stellar nurseries in the Carina Nebula. The telescope is expected to operate for at least 10 years, with enough fuel potentially extending its mission to 20 years.",
+      "Summarize the following legal reasoning:\n\nIn the landmark case Kelo v. City of New London (2005), the U.S. Supreme Court ruled 5-4 that the government's use of eminent domain to transfer private property to another private party for economic development qualified as 'public use' under the Fifth Amendment's Takings Clause. The city of New London, Connecticut, had approved a development plan designed to revitalize the economically distressed area around the Pfizer pharmaceutical research facility. Susette Kelo and other homeowners refused to sell and challenged the condemnation. Justice Stevens, writing for the majority, held that economic development is a traditional and long-accepted function of government and that the Court should defer to legislative judgments about what constitutes public use. Justice O'Connor's dissent argued that this ruling effectively eliminated any distinction between private and public use, allowing the government to take any private property and give it to any private party. The decision sparked significant public backlash and led 44 states to pass reform legislation restricting the use of eminent domain for private economic development. Ironically, the development project in New London was never completed, and the seized land remained vacant for years.",
+      "Summarize the following technical explanation:\n\nA hash table is a data structure that maps keys to values using a hash function. The hash function takes a key as input and computes an index into an array of buckets, from which the desired value can be found. In an ideal scenario, the hash function assigns each key to a unique bucket, achieving O(1) average-case time complexity for insertions, lookups, and deletions. However, collisions occur when two different keys hash to the same index. Common collision resolution strategies include chaining (each bucket contains a linked list of entries) and open addressing (probing for the next available slot using linear probing, quadratic probing, or double hashing). The load factor, defined as the number of entries divided by the number of buckets, determines when to resize the table—typically when it exceeds 0.7 to 0.75. Resizing involves allocating a new larger array (usually doubling the size) and rehashing all existing entries, which is an O(n) operation but occurs infrequently enough to maintain amortized O(1) performance. Real-world implementations like Python's dict use open addressing with perturbation-based probing, while Java's HashMap uses chaining with a threshold to convert long chains into balanced trees for O(log n) worst-case lookups.",
+      "Summarize the following opinion piece:\n\nRemote work is fundamentally reshaping not just where we work, but how we define productivity, community, and professional identity. Proponents argue that eliminating commutes saves an average of 40 minutes per day, that flexible schedules improve mental health, and that companies can access global talent pools unconstrained by geography. Critics counter that remote work erodes spontaneous collaboration, weakens company culture, and disproportionately harms junior employees who miss out on mentorship and in-person networking. The evidence is mixed: a Stanford study found a 13% productivity increase among remote call-center workers, but a Microsoft study of 61,000 employees found that remote work caused collaboration networks to become more siloed and static. Some companies like Spotify have adopted 'work from anywhere' policies, while others like Goldman Sachs have mandated full return to office, calling remote work an 'aberration.' The tension may ultimately resolve not through one model winning, but through hybrid arrangements that attempt to capture benefits of both—though skeptics note that hybrid is often the worst of both worlds, creating two-tier systems where remote workers are marginalized in promotion decisions.",
+      "Summarize the following narrative passage:\n\nMaria had been walking for three hours when the trail markers disappeared. The forest canopy above had thickened until only scattered coins of sunlight reached the ground. She checked her phone—no signal, battery at twelve percent. The map she'd downloaded showed the trail continuing northwest toward the ridge, but the terrain ahead was a tangle of fallen pines from last winter's ice storm. She remembered her grandfather's advice: when lost, follow water downhill. A faint sound of trickling reached her from the left, maybe fifty meters away. She pushed through the undergrowth toward it, thorns catching her sleeves, until she found a narrow stream cutting through moss-covered rocks. The water was clear and cold. She knelt, drank, and followed it downstream. Within an hour, the stream widened, joined a larger creek, and she spotted the wooden bridge she recognized from the trailhead parking area. Her car was two hundred meters away. She sat on the bridge railing, hands shaking, and laughed at herself for the panic that had gripped her twenty minutes earlier."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T12:09:46.124141+00:00",
+  "finished_at": "2026-03-18T12:10:25.548675+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

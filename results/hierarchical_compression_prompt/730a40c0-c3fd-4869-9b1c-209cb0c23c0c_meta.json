@@ -1,0 +1,45 @@
+{
+  "run_id": "730a40c0-c3fd-4869-9b1c-209cb0c23c0c",
+  "experiment": {
+    "name": "hierarchical_compression_prompt",
+    "description": "Testing whether a structured hierarchical compression system prompt outperforms no system prompt for text compression tasks.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "no system prompt vs hierarchical two-pass compression system prompt"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a helpful assistant. When asked to compress text, produce a shorter version that preserves every factual claim and meaning from the original. Never add information not in the source. Never drop a factual claim. Prefer prose over bullet points. Aim for at least 60% length reduction from the original.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v1",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a helpful assistant. When asked to compress text, follow this two-pass process: PASS 1 — Internally extract every distinct factual claim, relationship, and conclusion from the source text as a numbered list (do not output this list). PASS 2 — Rewrite those claims into the most token-efficient prose possible, combining related points and eliminating redundancy. Never add information not in the source. Never drop a factual claim. Prefer prose over bullet points. Aim for at least 60% length reduction from the original.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Compress the following text, preserving all facts and meaning:\n\nThe James Webb Space Telescope (JWST) was launched on December 25, 2021, from Kourou, French Guiana, aboard an Ariane 5 rocket. It is a joint project of NASA, ESA, and CSA. The telescope orbits the Sun near the second Lagrange point (L2), approximately 1.5 million kilometers from Earth. Its primary mirror is 6.5 meters in diameter, composed of 18 hexagonal gold-plated beryllium segments. JWST observes in the infrared spectrum, ranging from 0.6 to 28.3 micrometers. The telescope's sunshield is roughly the size of a tennis court and provides passive cooling to below 50 Kelvin. The total project cost was approximately $10 billion over 25 years of development. JWST's four main instruments are NIRCam, NIRSpec, MIRI, and FGS/NIRISS. One of its first major discoveries was detecting carbon dioxide in the atmosphere of exoplanet WASP-39b in August 2022.",
+      "Compress the following text, preserving all facts and meaning:\n\nA randomized controlled trial published in The Lancet in 2023 studied the effect of intermittent fasting (16:8 protocol) on cardiovascular health markers. The study enrolled 482 adults aged 35-65 across 12 clinical sites in Europe. Participants were randomly assigned to either the 16:8 fasting group (n=241) or a standard dietary advice control group (n=241). Over 26 weeks, the fasting group showed a mean reduction in LDL cholesterol of 14.2 mg/dL (95% CI: 10.1-18.3, p<0.001) compared to 3.8 mg/dL in controls. Systolic blood pressure decreased by 6.1 mmHg in the fasting group versus 1.9 mmHg in controls (p=0.003). BMI reduction was 1.8 kg/m² vs 0.6 kg/m². Adherence rate was 73% in the fasting group. The most reported side effect was headache during the first two weeks (reported by 31% of fasting participants). The study concluded that the 16:8 protocol produced clinically meaningful improvements in cardiovascular risk factors. Limitations included self-reported dietary compliance and lack of blinding.",
+      "Compress the following text, preserving all facts and meaning:\n\nIn Python, a decorator is a function that takes another function as input and extends its behavior without explicitly modifying it. Decorators use the @decorator_name syntax placed above a function definition. When Python encounters this syntax, it effectively calls decorator_name(original_function) and replaces the original function with the result. Common built-in decorators include @staticmethod, @classmethod, and @property. The functools.wraps decorator is used inside custom decorators to preserve the original function's metadata such as __name__ and __doc__. Decorators can accept arguments by using a three-level nested function pattern: the outer function takes the arguments, the middle function takes the decorated function, and the inner function is the actual wrapper. Decorators are commonly used for logging, authentication, caching, and rate limiting. Multiple decorators can be stacked on a single function, and they are applied bottom-up.",
+      "Compress the following text, preserving all facts and meaning:\n\nThe Battle of Gettysburg, fought from July 1 to July 3, 1863, is widely regarded as the turning point of the American Civil War. Confederate General Robert E. Lee led approximately 75,000 troops of the Army of Northern Virginia into Pennsylvania, hoping a decisive victory on Union soil would break Northern morale and potentially gain European recognition for the Confederacy. Union forces under General George Meade, numbering about 93,000, moved to intercept. On the first day, Confederate forces pushed Union troops back through the town to Cemetery Hill. On the second day, fierce fighting erupted at locations including Little Round Top, the Wheatfield, and Devil's Den, but Union lines held. On the third day, Lee ordered Pickett's Charge — a frontal assault of roughly 12,500 men across open ground against the Union center — which was repulsed with devastating casualties. Total casualties over three days were approximately 51,000 (23,000 Union, 28,000 Confederate). Lee retreated to Virginia on July 4, and never again launched a major offensive into Northern territory.",
+      "Compress the following text, preserving all facts and meaning:\n\nDuring a city council meeting on March 5, residents voiced conflicting opinions about the proposed Elm Street bike lane. Councilmember Torres argued the lane would reduce car traffic by 15%, citing a 2022 transportation study, while Councilmember Hayes countered that the same study's methodology was flawed because it only surveyed commuters during summer months. Local business owner Maria Chen testified that bike lanes on Oak Street had decreased her store's foot traffic by 20%, but cycling advocate group PedalForward presented data showing a 12% increase in retail spending along bike-lane corridors citywide. The council voted 4-3 to approve a six-month pilot program, with the stipulation that an independent traffic audit be conducted at the three-month mark. Hayes and two other members issued a dissenting statement calling the pilot 'premature without winter traffic data.'"
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T11:47:41.154603+00:00",
+  "finished_at": "2026-03-18T11:51:49.893126+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

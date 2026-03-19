@@ -1,0 +1,50 @@
+{
+  "run_id": "7b84621a-562f-471d-aa80-80f34b986785",
+  "experiment": {
+    "name": "skill_vs_baseline_math",
+    "description": "SkillConfig structured solver vs no-prompt baseline on math/logic tasks",
+    "diff": {
+      "field": "system_prompt",
+      "description": "SkillConfig (structured solver) vs None (no system prompt)"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "skill_solver",
+      "model": "claude-haiku-4-5",
+      "system_prompt": {
+        "__skill__": true,
+        "name": "structured_solver",
+        "version": "1.0.0",
+        "description": "Step-by-step problem solver with concise output",
+        "system_prompt": "You are a precise problem solver. Show your reasoning in numbered steps, then give a final answer on the last line prefixed with 'Answer:'. Be concise — no filler words.",
+        "required_tools": []
+      },
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      "A train travels 120 km in 1.5 hours. What is its average speed in km/h?",
+      "If a rectangle has perimeter 36cm and width 6cm, what is its area?",
+      "Alice has twice as many apples as Bob. Together they have 18 apples. How many does Alice have?"
+    ],
+    "tags": [],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T03:26:07.383709+00:00",
+  "finished_at": "2026-03-19T03:26:20.704794+00:00",
+  "num_tasks": 3,
+  "trials_a_count": 3,
+  "trials_b_count": 3
+}

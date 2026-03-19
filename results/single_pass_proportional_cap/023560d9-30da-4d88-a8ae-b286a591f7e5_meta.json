@@ -1,0 +1,45 @@
+{
+  "run_id": "023560d9-30da-4d88-a8ae-b286a591f7e5",
+  "experiment": {
+    "name": "single_pass_proportional_cap",
+    "description": "Replace two-pass internal reasoning with single-pass direct compression and swap fixed word cap for proportional length constraint",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Remove the two-pass extract-then-rewrite process and replace with a single-pass direct compression instruction. Keep the expert persona and meta-commentary ban from v2. Replace the fixed word cap with a proportional constraint (≤50% of input word count)."
+    },
+    "agent_a": {
+      "name": "variant_v1_baseline_baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a helpful assistant. When asked to compress text, follow this two-pass process: PASS 1 — Internally extract every distinct factual claim, relationship, and conclusion from the source text as a numbered list (do not output this list). PASS 2 — Rewrite those claims into the most token-efficient prose possible, combining related points and eliminating redundancy. Never add information not in the source. Never drop a factual claim. Prefer prose over bullet points. Aim for at least 60% length reduction from the original.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v3",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are an expert text compressor. Compress the given text in a single pass: read it once and immediately output the compressed version. Preserve every factual claim, relationship, and conclusion — never drop information and never add anything not in the source. Combine related points and eliminate redundancy to produce the most token-efficient prose possible. Your output must be ≤50% of the input's word count. Output only the compressed text. No preamble, no meta-commentary, no word counts, no self-assessment, no compression ratios, no bullet points.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "Compress the following text, preserving all facts and meaning:\n\nThe James Webb Space Telescope (JWST) was launched on December 25, 2021, from Kourou, French Guiana, aboard an Ariane 5 rocket. It is a joint project of NASA, ESA, and CSA. The telescope orbits the Sun near the second Lagrange point (L2), approximately 1.5 million kilometers from Earth. Its primary mirror is 6.5 meters in diameter, composed of 18 hexagonal gold-plated beryllium segments. JWST observes in the infrared spectrum, ranging from 0.6 to 28.3 micrometers. The telescope's sunshield is roughly the size of a tennis court and provides passive cooling to below 50 Kelvin. The total project cost was approximately $10 billion over 25 years of development. JWST's four main instruments are NIRCam, NIRSpec, MIRI, and FGS/NIRISS. One of its first major discoveries was detecting carbon dioxide in the atmosphere of exoplanet WASP-39b in August 2022.",
+      "Compress the following text, preserving all facts and meaning:\n\nThe Treaty of Westphalia, signed in 1648, ended the Thirty Years' War in the Holy Roman Empire and the Eighty Years' War between Spain and the Dutch Republic. The negotiations took place in two cities: Osnabrück and Münster, in the Westphalia region of modern-day Germany. The treaty established the principle of state sovereignty, meaning that each state had the right to govern its own territory without external interference. It recognized the independence of the Dutch Republic and the Swiss Confederation. The Peace of Augsburg's principle of cuius regio, eius religio was extended to include Calvinism alongside Lutheranism and Catholicism. France gained control of parts of Alsace, while Sweden received territories in northern Germany. The treaty is widely considered a foundational moment in the development of the modern international system based on sovereign nation-states.",
+      "Compress the following text, preserving all facts and meaning:\n\nThe argument that universal basic income (UBI) would reduce workforce participation rests on several assumptions that recent pilot programs have challenged. Finland's 2017–2018 experiment gave 2,000 unemployed citizens €560 per month with no conditions. The final report, published in May 2020, found that recipients worked an average of 6 more days per year than the control group, contradicting the prediction of increased idleness. However, critics note the sample was limited to unemployed individuals and the amount was below the poverty line, limiting generalizability. Stockton, California's SEED program (2019–2021) provided $500 per month to 125 residents earning below the city median. Full-time employment among recipients rose from 28% to 40% over two years, compared to a 5 percentage-point increase in the control group. Opponents counter that the Hawthorne effect and small sample sizes undermine both studies. Proponents argue that even imperfect evidence shifts the burden of proof: if UBI does not dramatically reduce work, the efficiency gains from eliminating means-tested bureaucracy may justify adoption. The debate thus hinges not only on empirical results but on how much evidential weight one assigns to small-scale pilots when projecting national-level policy outcomes.",
+      "Compress the following text, preserving all facts and meaning:\n\nTo perform a longest common subsequence (LCS) analysis of two strings, begin by constructing a matrix of dimensions (m+1) × (n+1), where m and n are the lengths of the two input strings. Initialize the first row and first column to zeros. Then iterate through each cell (i, j) for i from 1 to m and j from 1 to n: if the characters at position i in string A and position j in string B match, set the cell value to the diagonal predecessor plus one; otherwise, set it to the maximum of the cell directly above or directly to the left. After filling the matrix, the value at cell (m, n) gives the length of the LCS. To reconstruct the actual subsequence, trace back from (m, n): if the characters match, include that character and move diagonally; if they don't, move in the direction of the larger neighboring cell. The time complexity is O(m × n) and the space complexity is O(m × n), though it can be reduced to O(min(m, n)) if only the length is needed. LCS is widely used in diff utilities, bioinformatics sequence alignment, and version control systems.",
+      "Compress the following text, preserving all facts and meaning:\n\nDuring the autumn of 1888, a series of brutal murders in the Whitechapel district of London's East End terrorized the population and captivated the press. At least five victims — Mary Ann Nichols, Annie Chapman, Elizabeth Stride, Catherine Eddowes, and Mary Jane Kelly — are generally attributed to a single unidentified killer dubbed 'Jack the Ripper' by a letter sent to the Central News Agency on September 25, 1888, though its authenticity is disputed. The victims were all women engaged in prostitution, and the mutilations grew increasingly severe with each killing, suggesting escalating violence or surgical knowledge. The Metropolitan Police, led by Inspector Frederick Abberline, investigated over 2,000 suspects and interviewed more than 300 people but never secured a conviction. Theories about the killer's identity have ranged from local residents like Aaron Kosminski and Michael Ostrog to more sensational suspects including Prince Albert Victor and the painter Walter Sickert. The case remains officially unsolved to this day and has generated an entire field of study known as 'Ripperology.' The Whitechapel murders exposed the dire poverty and overcrowding of London's East End, prompting social reform efforts and increased press scrutiny of urban living conditions."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T12:03:08.033607+00:00",
+  "finished_at": "2026-03-18T12:06:38.804538+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

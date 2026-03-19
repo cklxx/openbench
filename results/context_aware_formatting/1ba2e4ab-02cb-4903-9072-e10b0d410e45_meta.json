@@ -1,0 +1,48 @@
+{
+  "run_id": "1ba2e4ab-02cb-4903-9072-e10b0d410e45",
+  "experiment": {
+    "name": "context_aware_formatting",
+    "description": "Testing whether a system reminder focused on context-aware formatting and conciseness improves quality scores, especially on open-ended and conversational tasks",
+    "diff": {
+      "field": "system_prompt",
+      "description": "No system prompt vs a context-aware formatting instruction that tells the model to adapt response style/length to the situation, avoid unnecessary headers in casual contexts, and stay concise"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "agent_b": {
+      "name": "variant_v2_formatting",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Adapt your response format and length to the context of each question. For casual or conversational questions, reply naturally without markdown headers, bullet points, or meta-commentary about your own response. For factual or analytical questions, be direct and concise — give the answer without exhaustive enumeration or unnecessary caveats. Never pad your response with filler. Match the register and tone the user sets.",
+      "allowed_tools": [],
+      "max_turns": 3,
+      "extra_options": {}
+    },
+    "tasks": [
+      "What are the three largest deserts in the world by area, and on which continents are they located?",
+      "You're at a family dinner and your 8-year-old nephew asks you: why is the sky blue?",
+      "Compare the pros and cons of solar energy vs. nuclear energy for a country planning its energy transition. Present your answer in a structured format.",
+      "Write a six-word story that conveys a sense of loss.",
+      "Explain what a black hole is to someone who has never heard of one before — you're chatting casually at a coffee shop.",
+      "Walk me through how to change a flat tire, step by step.",
+      "Is it ever ethical to break the law? Give me your honest take.",
+      "Summarize the key differences between TCP and UDP in a way that would be useful as a quick reference."
+    ],
+    "tags": [
+      "auto_research"
+    ],
+    "num_samples": 5,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-18T09:43:11.057902+00:00",
+  "finished_at": "2026-03-18T09:45:25.172137+00:00",
+  "num_tasks": 8,
+  "trials_a_count": 40,
+  "trials_b_count": 40
+}

@@ -273,7 +273,7 @@ class AutoResearchLoop:
                 c.print(f"  [dim]{evaluation.analysis}[/dim]")
 
                 # ── 4. Update best ───────────────────────────────────────────
-                use_b = evaluation.winner == "b" or evaluation.avg_score_b >= evaluation.avg_score_a
+                use_b = evaluation.winner == "b"
                 winner_config = exp.agent_b if use_b else exp.agent_a
                 winner_score = evaluation.avg_score_b if use_b else evaluation.avg_score_a
 

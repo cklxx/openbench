@@ -1,0 +1,62 @@
+{
+  "run_id": "cd8b0f67-d79d-4203-b28c-0b0daf83b90c",
+  "experiment": {
+    "name": "reasoning_decompose_3way__baseline_vs_full_scaffold",
+    "description": "3-way: baseline vs minimal-trap vs full-scaffold. Tests whether 'name the trap' alone captures most of the reasoning gain. Mix of easy (CRT) + hard (novel) problems.",
+    "diff": {
+      "field": "allowed_tools",
+      "description": "baseline vs full_scaffold"
+    },
+    "agent_a": {
+      "name": "baseline",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "full_scaffold",
+      "model": "claude-haiku-4-5",
+      "system_prompt": {
+        "__skill__": true,
+        "name": "full_scaffold_solver",
+        "version": "1.0.0",
+        "description": "Full RESTATE/INTUITION-CHECK/WORK/VERIFY template",
+        "system_prompt": "You are a rigorous problem solver. For every problem:\n1. RESTATE: Paraphrase the problem in your own words\n2. INTUITION CHECK: State your first instinct — then actively challenge it\n3. WORK: Solve step by step with explicit algebra or logic\n4. VERIFY: Plug your answer back in to confirm all constraints are met\n5. ANSWER: State the final answer clearly on its own line\n\nBe especially suspicious when the answer feels obvious.",
+        "required_tools": []
+      },
+      "allowed_tools": [],
+      "max_turns": 2,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      "A bat and a ball together cost $1.10. The bat costs exactly $1.00 more than the ball. How much does the ball cost? Answer in cents.",
+      "A car drives from city A to city B at 30 mph, then returns at 60 mph. What is the average speed for the entire round trip? Give a single number in mph.",
+      "A drawer contains 6 red socks and 6 blue socks. You reach in without looking. What is the minimum number of socks you must take to guarantee you have a matching pair? Give a single number.",
+      "A room has 100 people. 99 of them are wearing hats. How many hat-wearers must leave so that exactly 98% of the remaining people are wearing hats? Give a single number.",
+      "A bag contains 3 red and 2 blue marbles. You draw one marble, note its color, put it back, then draw again. What is the probability that you drew the SAME color both times? Express as a simplified fraction.",
+      "I have two children. You learn that at least one is a girl born on a Tuesday. What is the probability that both children are girls? (Assume equal probability for each day of week and each sex.) Express as a simplified fraction.",
+      "A stock rises 50% on Monday, then falls 50% on Tuesday. On Wednesday it rises 50% again, then falls 50% on Thursday. After these four days, is the stock price higher, lower, or equal to the original? By what percentage (to 2 decimal places)?",
+      "A factory has 3 quality control stations. Each station independently catches defects with probability 0.9. A defective item must be caught by ALL THREE stations to be removed. What is the probability a defective item makes it through undetected? Express as a percentage to 2 decimal places."
+    ],
+    "tags": [
+      "reasoning",
+      "cognitive-traps",
+      "decompose",
+      "tournament",
+      "tournament",
+      "reasoning_decompose_3way"
+    ],
+    "num_samples": 1,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-19T05:18:06.818156+00:00",
+  "finished_at": "2026-03-19T05:19:32.226453+00:00",
+  "num_tasks": 8,
+  "trials_a_count": 8,
+  "trials_b_count": 8
+}
