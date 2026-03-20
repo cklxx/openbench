@@ -1,0 +1,79 @@
+{
+  "run_id": "22f77f06-fa84-42fb-a146-a7b1a03fffd0",
+  "experiment": {
+    "name": "self_correction_depth",
+    "description": "5 bugs of increasing subtlety. Agent gets test output and must self-correct. Measures fix-per-round for haiku vs sonnet.",
+    "diff": {
+      "field": "model",
+      "description": "haiku vs sonnet self-correction ability"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Fix the bugs in the Python files. For each bug file:\n1. Run the test to see the failure\n2. Read the code and diagnose the bug\n3. Fix it\n4. Run the test again\n5. If it still fails, repeat from step 2\nFix all 5 bugs.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Fix the bugs in the Python files. For each bug file:\n1. Run the test to see the failure\n2. Read the code and diagnose the bug\n3. Fix it\n4. Run the test again\n5. If it still fails, repeat from step 2\nFix all 5 bugs.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all 5 bugs (bug1.py through bug5.py). Run each test to verify. Report which ones pass.",
+        "expected": "ALL PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "self-correction",
+          "multi-bug",
+          "progressive-difficulty"
+        ],
+        "check_fn": "sum(1 for x in [\"bug1: ALL PASSED\", \"bug2: ALL PASSED\", \"bug3: ALL PASSED\", \"bug4: ALL PASSED\", \"bug5: ALL PASSED\"] if x.lower().replace(\"all passed\", \"all passed\") in output.lower().replace(\"all passed\", \"all passed\")) >= 3"
+      }
+    ],
+    "tags": [
+      "self-correction",
+      "error-recovery",
+      "depth-analysis"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "bug1.py": "def fibonacci(n):\n    \"\"\"Return the nth Fibonacci number (0-indexed). F(0)=0, F(1)=1.\"\"\"\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(n):  # Bug: should be range(n-1)\n        a, b = b, a + b\n    return b  # Bug: should return a (off by one)\n",
+      "test_bug1.py": "from bug1 import fibonacci\nassert fibonacci(0) == 0, f\"F(0)={fibonacci(0)}\"\nassert fibonacci(1) == 1, f\"F(1)={fibonacci(1)}\"\nassert fibonacci(2) == 1, f\"F(2)={fibonacci(2)}\"\nassert fibonacci(5) == 5, f\"F(5)={fibonacci(5)}\"\nassert fibonacci(10) == 55, f\"F(10)={fibonacci(10)}\"\nprint(\"bug1: ALL PASSED\")\n",
+      "bug2.py": "def search_insert_position(nums, target):\n    \"\"\"Find index to insert target in sorted array to keep it sorted.\n    If target exists, return its index.\"\"\"\n    lo, hi = 0, len(nums) - 1  # Bug: should be len(nums) for insert-at-end case\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        elif nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return lo\n",
+      "test_bug2.py": "from bug2 import search_insert_position as sip\nassert sip([1,3,5,6], 5) == 2\nassert sip([1,3,5,6], 2) == 1\nassert sip([1,3,5,6], 7) == 4  # Insert at end\nassert sip([1,3,5,6], 0) == 0  # Insert at start\nassert sip([], 5) == 0  # Empty array\nassert sip([1], 0) == 0\nassert sip([1], 2) == 1\nassert sip([1,3], 2) == 1\nprint(\"bug2: ALL PASSED\")\n",
+      "bug3.py": "class Matrix:\n    \"\"\"Simple matrix operations.\"\"\"\n    def __init__(self, data):\n        self.data = data  # Bug: should deep copy to avoid aliasing\n        self.rows = len(data)\n        self.cols = len(data[0]) if data else 0\n\n    def transpose(self):\n        \"\"\"Return a new transposed matrix.\"\"\"\n        result = [[0] * self.rows for _ in range(self.cols)]\n        for i in range(self.rows):\n            for j in range(self.cols):\n                result[j][i] = self.data[i][j]\n        return Matrix(result)\n\n    def multiply(self, other):\n        \"\"\"Matrix multiplication: self × other.\"\"\"\n        if self.cols != other.rows:\n            raise ValueError(f\"Incompatible dimensions: {self.rows}x{self.cols} × {other.rows}x{other.cols}\")\n        result = [[0] * other.cols for _ in range(self.rows)]\n        for i in range(self.rows):\n            for j in range(other.cols):\n                for k in range(self.cols):\n                    result[i][j] += self.data[i][k] * other.data[k][j]\n        return Matrix(result)\n\n    def __eq__(self, other):\n        return self.data == other.data\n\n    def __repr__(self):\n        return f\"Matrix({self.data})\"\n",
+      "test_bug3.py": "from bug3 import Matrix\n\n# Test 1: Basic transpose\nm = Matrix([[1, 2], [3, 4]])\nt = m.transpose()\nassert t.data == [[1, 3], [2, 4]], f\"Transpose wrong: {t.data}\"\n\n# Test 2: Mutation isolation - modifying original shouldn't affect transpose\nm.data[0][0] = 99\nassert t.data[0][0] == 1, f\"Transpose mutated when original changed: {t.data}\"\n\n# Test 3: Constructor mutation isolation\ndata = [[1, 2], [3, 4]]\nm2 = Matrix(data)\ndata[0][0] = 99\nassert m2.data[0][0] == 1, f\"Matrix mutated when source changed: {m2.data}\"\n\n# Test 4: Multiply\na = Matrix([[1, 2], [3, 4]])\nb = Matrix([[5, 6], [7, 8]])\nc = a.multiply(b)\nassert c.data == [[19, 22], [43, 50]], f\"Multiply wrong: {c.data}\"\n\n# Test 5: Multiply doesn't mutate operands\nassert a.data == [[1, 2], [3, 4]], f\"Multiply mutated a: {a.data}\"\n\nprint(\"bug3: ALL PASSED\")\n",
+      "bug4.py": "class EventEmitter:\n    \"\"\"Simple event system with once() and on() handlers.\"\"\"\n    def __init__(self):\n        self._handlers = {}  # event_name → list of (callback, once_flag)\n\n    def on(self, event, callback):\n        \"\"\"Register a persistent handler.\"\"\"\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((callback, False))\n\n    def once(self, event, callback):\n        \"\"\"Register a one-time handler (removed after first emit).\"\"\"\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((callback, True))\n\n    def emit(self, event, *args):\n        \"\"\"Emit an event, calling all handlers.\"\"\"\n        if event not in self._handlers:\n            return\n        # Bug: modifying list while iterating causes skipped handlers\n        for i, (callback, once) in enumerate(self._handlers[event]):\n            callback(*args)\n            if once:\n                self._handlers[event].pop(i)  # Bug: pop during iteration\n",
+      "test_bug4.py": "from bug4 import EventEmitter\n\n# Test 1: Basic on/emit\nresults = []\nee = EventEmitter()\nee.on(\"data\", lambda x: results.append(f\"A:{x}\"))\nee.emit(\"data\", 1)\nee.emit(\"data\", 2)\nassert results == [\"A:1\", \"A:2\"], f\"Basic on failed: {results}\"\nprint(\"  basic on: OK\")\n\n# Test 2: once fires only once\nresults2 = []\nee2 = EventEmitter()\nee2.once(\"click\", lambda: results2.append(\"clicked\"))\nee2.emit(\"click\")\nee2.emit(\"click\")\nassert results2 == [\"clicked\"], f\"Once fired multiple times: {results2}\"\nprint(\"  once: OK\")\n\n# Test 3: Mixed on + once (the tricky one)\nresults3 = []\nee3 = EventEmitter()\nee3.once(\"ev\", lambda: results3.append(\"once1\"))\nee3.on(\"ev\", lambda: results3.append(\"persist\"))\nee3.once(\"ev\", lambda: results3.append(\"once2\"))\nee3.emit(\"ev\")\nassert \"once1\" in results3 and \"persist\" in results3 and \"once2\" in results3,     f\"First emit missing handlers: {results3}\"\n\nresults3.clear()\nee3.emit(\"ev\")\nassert results3 == [\"persist\"], f\"Second emit should only have persist: {results3}\"\nprint(\"  mixed on+once: OK\")\n\n# Test 4: No handlers\nee4 = EventEmitter()\nee4.emit(\"nothing\")  # Should not raise\nprint(\"  no handlers: OK\")\n\nprint(\"bug4: ALL PASSED\")\n",
+      "bug5.py": "def longest_increasing_subsequence(nums):\n    \"\"\"Return the LENGTH of the longest strictly increasing subsequence.\n\n    Should be O(n log n) using patience sorting / binary search approach.\n    \"\"\"\n    if not nums:\n        return 0\n\n    # tails[i] = smallest tail element for increasing subsequence of length i+1\n    tails = []\n\n    for num in nums:\n        # Binary search for the leftmost tail >= num\n        lo, hi = 0, len(tails)\n        while lo < hi:\n            mid = (lo + hi) // 2\n            if tails[mid] < num:\n                lo = mid + 1\n            else:\n                hi = mid\n\n        if lo == len(tails):\n            tails.append(num)\n        else:\n            tails[lo] = num\n\n    return len(tails)\n\n# Bug: the algorithm above is actually correct for strictly increasing.\n# The REAL bug is that the problem says \"strictly increasing\" but the test\n# expects \"non-decreasing\" behavior for some edge cases. Let me make it\n# buggy in a different way...\n\ndef lis_with_reconstruction(nums):\n    \"\"\"Return both the LENGTH and the actual subsequence.\"\"\"\n    if not nums:\n        return 0, []\n\n    n = len(nums)\n    dp = [1] * n\n    parent = [-1] * n\n\n    for i in range(1, n):\n        for j in range(i):\n            if nums[j] < nums[i] and dp[j] + 1 > dp[i]:\n                dp[i] = dp[j] + 1\n                parent[i] = j\n\n    # Find the index of maximum length\n    max_len = max(dp)\n    max_idx = dp.index(max_len)\n\n    # Reconstruct — Bug: reconstruction goes forward instead of backward\n    seq = []\n    idx = max_idx\n    while idx != -1:\n        seq.append(nums[idx])\n        idx = parent[idx]\n\n    return max_len, seq  # Bug: seq is reversed (should be seq[::-1])\n",
+      "test_bug5.py": "from bug5 import longest_increasing_subsequence as lis\nfrom bug5 import lis_with_reconstruction\n\n# Test LIS length\nassert lis([10, 9, 2, 5, 3, 7, 101, 18]) == 4  # [2,3,7,18] or [2,5,7,18]\nassert lis([0, 1, 0, 3, 2, 3]) == 4  # [0,1,2,3]\nassert lis([7, 7, 7, 7]) == 1  # strictly increasing\nassert lis([]) == 0\nassert lis([1]) == 1\nassert lis([5, 4, 3, 2, 1]) == 1  # decreasing\nassert lis([1, 2, 3, 4, 5]) == 5  # already sorted\nprint(\"  lis length: OK\")\n\n# Test reconstruction\nlength, seq = lis_with_reconstruction([10, 9, 2, 5, 3, 7, 101, 18])\nassert length == 4, f\"Length wrong: {length}\"\n# Verify the sequence is actually increasing\nfor i in range(1, len(seq)):\n    assert seq[i] > seq[i-1], f\"Not increasing at {i}: {seq}\"\nassert len(seq) == length, f\"Sequence length {len(seq)} != {length}\"\nprint(\"  lis reconstruction: OK\")\n\nlength2, seq2 = lis_with_reconstruction([3, 1, 4, 1, 5, 9, 2, 6])\nassert length2 == 4\nfor i in range(1, len(seq2)):\n    assert seq2[i] > seq2[i-1], f\"Not increasing: {seq2}\"\nprint(\"  lis reconstruction 2: OK\")\n\nprint(\"bug5: ALL PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-20T15:02:25.494941+00:00",
+  "finished_at": "2026-03-20T15:06:50.120297+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 3,
+  "trials_b_count": 3
+}

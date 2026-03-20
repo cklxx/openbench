@@ -1,0 +1,98 @@
+{
+  "run_id": "4e46645c-f87b-4da3-8a11-ff00c4de673c",
+  "experiment": {
+    "name": "tool_distractor_resilience__haiku_10tools_vs_sonnet_5tools",
+    "description": "Same task, varying tool count (1/5/10/20). Measures distractor tool impact on haiku vs sonnet.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "haiku_10tools vs sonnet_5tools"
+    },
+    "agent_a": {
+      "name": "haiku_10tools",
+      "model": "claude-haiku-4-5",
+      "system_prompt": null,
+      "allowed_tools": [
+        "Bash",
+        "Read",
+        "Write",
+        "Glob",
+        "Edit",
+        "Grep",
+        "WebSearch",
+        "WebFetch",
+        "NotebookEdit",
+        "Agent"
+      ],
+      "max_turns": 6,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet_5tools",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": null,
+      "allowed_tools": [
+        "Bash",
+        "Read",
+        "Write",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 6,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Calculate the sum of all prime numbers below 100. Use a Python one-liner via Bash. Give the final number.",
+        "expected": "1060",
+        "difficulty": "easy",
+        "tags": [
+          "primes",
+          "simple-calculation"
+        ],
+        "check_fn": "\"1060\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Write a Python script that computes the first 20 Fibonacci numbers and prints them as a comma-separated list. Run it via Bash.",
+        "expected": "6765",
+        "difficulty": "easy",
+        "tags": [
+          "fibonacci",
+          "simple"
+        ],
+        "check_fn": "\"6765\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read the file data.csv in the current directory. Count the number of lines (excluding the header). Print just the count.",
+        "expected": "10",
+        "difficulty": "easy",
+        "tags": [
+          "file-read",
+          "counting"
+        ],
+        "check_fn": "\"10\" in output"
+      }
+    ],
+    "tags": [
+      "distractor-tools",
+      "resilience",
+      "chekhov-gun",
+      "tournament",
+      "tool_distractor_resilience"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "data.csv": "name,age,salary,department\nAlice,30,75000,Engineering\nBob,25,55000,Marketing\nCarol,35,92000,Engineering\nDave,28,61000,Marketing\nEve,32,88000,Engineering\nFrank,45,105000,Management\nGrace,29,58000,Marketing\nHank,38,95000,Engineering\nIvy,33,72000,Sales\nJack,41,99000,Management\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-20T15:12:23.593862+00:00",
+  "finished_at": "2026-03-20T15:14:18.104862+00:00",
+  "num_tasks": 3,
+  "trials_a_count": 9,
+  "trials_b_count": 9
+}
