@@ -1,0 +1,109 @@
+{
+  "run_id": "39104c1b-08f9-457d-929c-a726b5101da8",
+  "experiment": {
+    "name": "competitive_programming",
+    "description": "4 competitive programming problems requiring algorithmic insight. Naive O(n²) solutions will TLE. haiku vs sonnet at max_turns=20.",
+    "diff": {
+      "field": "model",
+      "description": "haiku vs sonnet on competitive programming"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Solve competitive programming problems. Read the problem spec and tests. Implement an EFFICIENT solution (naive brute-force will be too slow for large inputs). Run tests to verify both correctness and performance.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Solve competitive programming problems. Read the problem spec and tests. Implement an EFFICIENT solution (naive brute-force will be too slow for large inputs). Run tests to verify both correctness and performance.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Solve p1_subarray.py (longest subarray with exactly k distinct elements). Run test_p1.py.",
+        "expected": "ALL PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "sliding-window",
+          "hashmap"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"all passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Solve p2_jumps.py (minimum jumps to reach end). Run test_p2.py.",
+        "expected": "ALL PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "greedy",
+          "dp"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"all passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Solve p3_inversions.py (count inversions in O(n log n)). Run test_p3.py.",
+        "expected": "ALL PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "merge-sort",
+          "divide-conquer"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"all passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Solve p4_water.py (trapping rain water). Run test_p4.py.",
+        "expected": "ALL PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "two-pointer",
+          "stack"
+        ],
+        "check_fn": "\"ALL PASSED\" in output or \"all passed\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "competitive-programming",
+      "algorithmic",
+      "performance"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "p1_subarray.py": "\"\"\"\nFind the length of the longest contiguous subarray with EXACTLY k distinct elements.\n\nInput: nums (list of ints), k (int)\nOutput: length of longest such subarray, or 0 if impossible\n\nConstraints: 1 ≤ len(nums) ≤ 100,000; 1 ≤ k ≤ len(nums)\n\nExample: nums=[1,2,1,2,3], k=2 → 4 (subarray [1,2,1,2])\nExample: nums=[1,2,1,3,4], k=3 → 3 (subarray [2,1,3] or [1,3,4])\nExample: nums=[1,1,1], k=2 → 0\n\"\"\"\ndef longest_subarray_k_distinct(nums, k):\n    raise NotImplementedError\n",
+      "test_p1.py": "import time\nfrom p1_subarray import longest_subarray_k_distinct as solve\n\n# Correctness tests\nassert solve([1,2,1,2,3], 2) == 4\nassert solve([1,2,1,3,4], 3) == 3\nassert solve([1,1,1], 2) == 0\nassert solve([1], 1) == 1\nassert solve([1,2,3,4,5], 5) == 5\nassert solve([1,2,3,4,5], 1) == 1\nassert solve([1,1,2,2,3,3], 2) == 4\nassert solve([1,2,1,2,1,2], 2) == 6\nassert solve([], 1) == 0\nassert solve([4,3,2,1,4,3,2,1], 4) == 8\nprint(\"Correctness: PASSED\")\n\n# Performance test: must handle 100k elements in < 1 second\nimport random\nrandom.seed(42)\nbig = [random.randint(1, 50) for _ in range(100_000)]\nstart = time.time()\nresult = solve(big, 25)\nelapsed = time.time() - start\nassert elapsed < 1.0, f\"Too slow: {elapsed:.2f}s (must be < 1s)\"\nassert result > 0, f\"Expected positive result, got {result}\"\nprint(f\"Performance: PASSED ({elapsed:.3f}s)\")\nprint(\"ALL PASSED\")\n",
+      "p2_jumps.py": "\"\"\"\nGiven an array of non-negative integers where each element represents the\nmaximum jump length from that position, find the minimum number of jumps\nto reach the last index from the first index.\n\nInput: nums (list of non-negative ints, len ≥ 1)\nOutput: minimum jumps, or -1 if impossible\n\nConstraints: 1 ≤ len(nums) ≤ 100,000\n\nExample: nums=[2,3,1,1,4] → 2 (jump 1→2, then 2→5)\nExample: nums=[2,3,0,1,4] → 2\nExample: nums=[1,1,1,1,1] → 4\nExample: nums=[0,1,2] → -1 (stuck at index 0)\n\"\"\"\ndef min_jumps(nums):\n    raise NotImplementedError\n",
+      "test_p2.py": "import time\nfrom p2_jumps import min_jumps as solve\n\n# Correctness\nassert solve([2,3,1,1,4]) == 2\nassert solve([2,3,0,1,4]) == 2\nassert solve([1,1,1,1,1]) == 4\nassert solve([0,1,2]) == -1\nassert solve([1]) == 0\nassert solve([5,4,3,2,1,0,0]) == -1  # can reach end? 5→5(idx5), val=0, stuck. But 5 can jump to idx5. idx5=0. Can't reach idx6. So -1.\nassert solve([5,4,3,2,1,1,0]) == 2  # 0→5→6\nassert solve([1,2,3]) == 2  # 0→1→3\nassert solve([10,0,0,0,0,0,0,0,0,0,1]) == 1  # jump straight to end\nassert solve([3,2,1,0,4]) == -1  # stuck at index 3\nprint(\"Correctness: PASSED\")\n\n# Performance\nimport random\nrandom.seed(123)\nbig = [random.randint(1, 10) for _ in range(100_000)]\nstart = time.time()\nresult = solve(big)\nelapsed = time.time() - start\nassert elapsed < 1.0, f\"Too slow: {elapsed:.2f}s\"\nassert result > 0\nprint(f\"Performance: PASSED ({elapsed:.3f}s)\")\nprint(\"ALL PASSED\")\n",
+      "p3_inversions.py": "\"\"\"\nCount the number of inversions in an array. An inversion is a pair (i, j)\nwhere i < j but nums[i] > nums[j].\n\nInput: nums (list of ints)\nOutput: number of inversions (int)\n\nConstraints: 1 ≤ len(nums) ≤ 100,000\n\nExample: [2,4,1,3,5] → 3 inversions: (2,1), (4,1), (4,3)\nExample: [5,4,3,2,1] → 10 inversions (all pairs)\nExample: [1,2,3,4,5] → 0\n\nNote: O(n²) brute force will TLE. Need O(n log n) solution.\n\"\"\"\ndef count_inversions(nums):\n    raise NotImplementedError\n",
+      "test_p3.py": "import time\nfrom p3_inversions import count_inversions as solve\n\n# Correctness\nassert solve([2,4,1,3,5]) == 3\nassert solve([5,4,3,2,1]) == 10\nassert solve([1,2,3,4,5]) == 0\nassert solve([1]) == 0\nassert solve([2,1]) == 1\nassert solve([3,1,2]) == 2\nassert solve([1,5,3,2,4]) == 4\nprint(\"Correctness: PASSED\")\n\n# Performance: 100k elements in < 2 seconds\nimport random\nrandom.seed(777)\nbig = list(range(100_000, 0, -1))  # worst case: fully reversed\nstart = time.time()\nresult = solve(big)\nelapsed = time.time() - start\nexpected = 100_000 * 99_999 // 2  # n*(n-1)/2\nassert result == expected, f\"Expected {expected}, got {result}\"\nassert elapsed < 2.0, f\"Too slow: {elapsed:.2f}s (must be < 2s)\"\nprint(f\"Performance: PASSED ({elapsed:.3f}s)\")\n\n# Random case\nbig2 = random.sample(range(100_000), 100_000)\nstart = time.time()\nresult2 = solve(big2)\nelapsed2 = time.time() - start\nassert elapsed2 < 2.0, f\"Random case too slow: {elapsed2:.2f}s\"\nassert 0 <= result2 <= 100_000 * 99_999 // 2\nprint(f\"Random perf: PASSED ({elapsed2:.3f}s)\")\nprint(\"ALL PASSED\")\n",
+      "p4_water.py": "\"\"\"\nGiven n non-negative integers representing an elevation map where the width\nof each bar is 1, compute how much water can be trapped after raining.\n\nInput: height (list of non-negative ints)\nOutput: total units of trapped water\n\nConstraints: 1 ≤ len(height) ≤ 100,000\n\nExample: height=[0,1,0,2,1,0,1,3,2,1,2,1] → 6\nExample: height=[4,2,0,3,2,5] → 9\n\"\"\"\ndef trap(height):\n    raise NotImplementedError\n",
+      "test_p4.py": "import time\nfrom p4_water import trap as solve\n\n# Correctness\nassert solve([0,1,0,2,1,0,1,3,2,1,2,1]) == 6\nassert solve([4,2,0,3,2,5]) == 9\nassert solve([]) == 0\nassert solve([3]) == 0\nassert solve([3,0,3]) == 3\nassert solve([0,0,0]) == 0\nassert solve([5,4,3,2,1]) == 0  # descending, no trap\nassert solve([1,2,3,4,5]) == 0  # ascending, no trap\nassert solve([5,2,1,2,1,5]) == 14\nassert solve([2,0,2]) == 2\nprint(\"Correctness: PASSED\")\n\n# Performance\nimport random\nrandom.seed(456)\nbig = [random.randint(0, 10000) for _ in range(100_000)]\nstart = time.time()\nresult = solve(big)\nelapsed = time.time() - start\nassert elapsed < 1.0, f\"Too slow: {elapsed:.2f}s\"\nassert result >= 0\nprint(f\"Performance: PASSED ({elapsed:.3f}s)\")\nprint(\"ALL PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-20T13:01:29.364584+00:00",
+  "finished_at": "2026-03-20T13:20:50.374312+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 12,
+  "trials_b_count": 12
+}

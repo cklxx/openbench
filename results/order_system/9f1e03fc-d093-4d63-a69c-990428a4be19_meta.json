@@ -1,0 +1,70 @@
+{
+  "run_id": "9f1e03fc-d093-4d63-a69c-990428a4be19",
+  "experiment": {
+    "name": "order_system",
+    "description": "Build multi-component order processing system: state machine, inventory, payments, event log. 12 test cases. haiku vs sonnet.",
+    "diff": {
+      "field": "model",
+      "description": "haiku vs sonnet on multi-component system design"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Build an order processing system in orders.py. Read test_orders.py first. Implement OrderSystem class with: create_order, confirm_order, ship_order, deliver_order, cancel_order, get_order, get_stock, get_event_log, add_product. State machine: PENDING→CONFIRMED→SHIPPED→DELIVERED (or CANCELLED from PENDING/CONFIRMED). Run tests to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Build an order processing system in orders.py. Read test_orders.py first. Implement OrderSystem class with: create_order, confirm_order, ship_order, deliver_order, cancel_order, get_order, get_stock, get_event_log, add_product. State machine: PENDING→CONFIRMED→SHIPPED→DELIVERED (or CANCELLED from PENDING/CONFIRMED). Run tests to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 30,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Build a complete order processing system in orders.py.\nRead test_orders.py for all requirements (12 test cases).\nMust handle: state machine transitions, inventory management, multi-item orders, cancellation with stock restore, event logging, error handling for invalid transitions and insufficient stock.\nRun test_orders.py to verify all tests pass.",
+        "expected": "ALL TESTS PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "state-machine",
+          "multi-component",
+          "system-design"
+        ],
+        "check_fn": "\"ALL TESTS PASSED\" in output or \"all tests passed\" in output.lower() or (\"12/12\" in output)"
+      }
+    ],
+    "tags": [
+      "system-design",
+      "multi-file",
+      "complex"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "test_orders.py": "\"\"\"Comprehensive test suite for order processing system.\"\"\"\nimport sys\nsys.path.insert(0, \".\")\n\nfrom orders import OrderSystem\n\ndef test_create_order():\n    sys = OrderSystem()\n    sys.add_product(\"WIDGET\", price=10.00, stock=100)\n    order_id = sys.create_order(\"alice\", [(\"WIDGET\", 3)])\n    assert order_id is not None\n    order = sys.get_order(order_id)\n    assert order[\"status\"] == \"PENDING\"\n    assert order[\"customer\"] == \"alice\"\n    assert order[\"total\"] == 30.00\n    print(\"  create_order: OK\")\n\ndef test_confirm_order():\n    sys = OrderSystem()\n    sys.add_product(\"WIDGET\", price=10.00, stock=100)\n    oid = sys.create_order(\"bob\", [(\"WIDGET\", 5)])\n    sys.confirm_order(oid)\n    order = sys.get_order(oid)\n    assert order[\"status\"] == \"CONFIRMED\"\n    # Stock should be decremented\n    assert sys.get_stock(\"WIDGET\") == 95\n    print(\"  confirm_order: OK\")\n\ndef test_full_lifecycle():\n    sys = OrderSystem()\n    sys.add_product(\"A\", price=5.00, stock=50)\n    oid = sys.create_order(\"carol\", [(\"A\", 2)])\n    sys.confirm_order(oid)\n    sys.ship_order(oid)\n    sys.deliver_order(oid)\n    order = sys.get_order(oid)\n    assert order[\"status\"] == \"DELIVERED\"\n    print(\"  full_lifecycle: OK\")\n\ndef test_cancel_pending():\n    sys = OrderSystem()\n    sys.add_product(\"B\", price=20.00, stock=10)\n    oid = sys.create_order(\"dave\", [(\"B\", 3)])\n    sys.cancel_order(oid)\n    assert sys.get_order(oid)[\"status\"] == \"CANCELLED\"\n    # Stock should NOT be affected (wasn't confirmed)\n    assert sys.get_stock(\"B\") == 10\n    print(\"  cancel_pending: OK\")\n\ndef test_cancel_confirmed():\n    sys = OrderSystem()\n    sys.add_product(\"C\", price=15.00, stock=20)\n    oid = sys.create_order(\"eve\", [(\"C\", 5)])\n    sys.confirm_order(oid)\n    assert sys.get_stock(\"C\") == 15  # decremented\n    sys.cancel_order(oid)\n    assert sys.get_order(oid)[\"status\"] == \"CANCELLED\"\n    assert sys.get_stock(\"C\") == 20  # restored\n    print(\"  cancel_confirmed: OK\")\n\ndef test_invalid_transition():\n    sys = OrderSystem()\n    sys.add_product(\"D\", price=10.00, stock=10)\n    oid = sys.create_order(\"frank\", [(\"D\", 1)])\n    # Can't ship a PENDING order\n    try:\n        sys.ship_order(oid)\n        assert False, \"Should raise error\"\n    except (ValueError, Exception):\n        pass\n    # Can't deliver a PENDING order\n    try:\n        sys.deliver_order(oid)\n        assert False, \"Should raise error\"\n    except (ValueError, Exception):\n        pass\n    # Can't cancel a DELIVERED order\n    sys.confirm_order(oid)\n    sys.ship_order(oid)\n    sys.deliver_order(oid)\n    try:\n        sys.cancel_order(oid)\n        assert False, \"Should raise error\"\n    except (ValueError, Exception):\n        pass\n    print(\"  invalid_transition: OK\")\n\ndef test_insufficient_stock():\n    sys = OrderSystem()\n    sys.add_product(\"E\", price=5.00, stock=3)\n    oid = sys.create_order(\"grace\", [(\"E\", 5)])\n    try:\n        sys.confirm_order(oid)\n        assert False, \"Should raise error for insufficient stock\"\n    except (ValueError, Exception):\n        pass\n    assert sys.get_order(oid)[\"status\"] == \"PENDING\"  # stays PENDING\n    assert sys.get_stock(\"E\") == 3  # stock unchanged\n    print(\"  insufficient_stock: OK\")\n\ndef test_multi_item_order():\n    sys = OrderSystem()\n    sys.add_product(\"X\", price=10.00, stock=50)\n    sys.add_product(\"Y\", price=25.00, stock=30)\n    sys.add_product(\"Z\", price=5.00, stock=100)\n    oid = sys.create_order(\"hank\", [(\"X\", 2), (\"Y\", 1), (\"Z\", 3)])\n    order = sys.get_order(oid)\n    assert order[\"total\"] == 10*2 + 25*1 + 5*3  # 60.00\n    sys.confirm_order(oid)\n    assert sys.get_stock(\"X\") == 48\n    assert sys.get_stock(\"Y\") == 29\n    assert sys.get_stock(\"Z\") == 97\n    print(\"  multi_item_order: OK\")\n\ndef test_event_log():\n    sys = OrderSystem()\n    sys.add_product(\"F\", price=10.00, stock=10)\n    oid = sys.create_order(\"ivan\", [(\"F\", 1)])\n    sys.confirm_order(oid)\n    sys.ship_order(oid)\n    log = sys.get_event_log(oid)\n    assert len(log) >= 3  # created, confirmed, shipped\n    # Each event should have at least: event type and timestamp\n    for event in log:\n        assert \"event\" in event or \"type\" in event or \"status\" in event\n    print(\"  event_log: OK\")\n\ndef test_unknown_product():\n    sys = OrderSystem()\n    try:\n        sys.create_order(\"judy\", [(\"NONEXISTENT\", 1)])\n        assert False, \"Should raise error\"\n    except (ValueError, KeyError, Exception):\n        pass\n    print(\"  unknown_product: OK\")\n\ndef test_unknown_order():\n    sys = OrderSystem()\n    try:\n        sys.get_order(\"FAKE_ID\")\n        assert False, \"Should raise error\"\n    except (ValueError, KeyError, Exception):\n        pass\n    print(\"  unknown_order: OK\")\n\ndef test_concurrent_stock():\n    \"\"\"Two orders competing for limited stock.\"\"\"\n    sys = OrderSystem()\n    sys.add_product(\"RARE\", price=100.00, stock=5)\n    oid1 = sys.create_order(\"alice\", [(\"RARE\", 3)])\n    oid2 = sys.create_order(\"bob\", [(\"RARE\", 3)])\n    sys.confirm_order(oid1)  # 5→2\n    assert sys.get_stock(\"RARE\") == 2\n    try:\n        sys.confirm_order(oid2)  # only 2 left, need 3 → fail\n        assert False, \"Should fail: insufficient stock\"\n    except (ValueError, Exception):\n        pass\n    assert sys.get_stock(\"RARE\") == 2  # unchanged\n    print(\"  concurrent_stock: OK\")\n\nif __name__ == \"__main__\":\n    passed = 0\n    failed = 0\n    for name, func in sorted(globals().items()):\n        if name.startswith(\"test_\"):\n            try:\n                func()\n                passed += 1\n            except Exception as e:\n                print(f\"  {name}: FAIL - {e}\")\n                failed += 1\n    total = passed + failed\n    print(f\"\\nResults: {passed}/{total} passed\")\n    if failed == 0:\n        print(\"ALL TESTS PASSED\")\n    else:\n        print(f\"{failed} FAILED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-20T12:48:28.731831+00:00",
+  "finished_at": "2026-03-20T12:49:26.115022+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 3,
+  "trials_b_count": 3
+}
