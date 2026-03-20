@@ -52,12 +52,17 @@ def check_correctness(output: str, expected: str | None, check_fn: str | None = 
 
     Returns True/False for objective check, None if no expected answer provided.
 
-    Uses a multi-strategy approach:
+    Uses a multi-strategy approach (first match wins):
     1. If check_fn is provided, evaluate it with `output` in scope
-    2. If expected is provided, check for substring match (case-insensitive)
+    2. If expected is provided, check for case-insensitive substring match
+    3. If output is empty, return False when any check is configured
     """
     if expected is None and check_fn is None:
         return None
+
+    # Empty output always fails
+    if not output or not output.strip():
+        return False
 
     if check_fn is not None:
         try:
