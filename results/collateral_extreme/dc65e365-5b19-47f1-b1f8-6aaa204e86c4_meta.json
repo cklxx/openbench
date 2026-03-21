@@ -1,0 +1,91 @@
+{
+  "run_id": "dc65e365-5b19-47f1-b1f8-6aaa204e86c4",
+  "experiment": {
+    "name": "collateral_extreme",
+    "description": "Vague bug report ('HTTP 500 errors'), 20+ file project, bug buried 4 layers deep, multiple red herrings. haiku vs sonnet: who is more surgical?",
+    "diff": {
+      "field": "model",
+      "description": "haiku vs sonnet on surgical precision in complex codebase"
+    },
+    "agent_a": {
+      "name": "haiku",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Users are reporting HTTP 500 errors when creating accounts. Investigate and fix the issue. Run tests/test_api.py to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 25,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "sonnet",
+      "model": "claude-sonnet-4-6",
+      "system_prompt": "Users are reporting HTTP 500 errors when creating accounts. Investigate and fix the issue. Run tests/test_api.py to verify.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 25,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Users report HTTP 500 errors when creating accounts. Some emails work, others don't. Investigate the codebase, find the root cause, fix it, and run tests/test_api.py to verify.",
+        "expected": "ALL TESTS PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "root-cause-analysis",
+          "deep-investigation",
+          "collateral"
+        ],
+        "check_fn": "\"all tests passed\" in output.lower() or \"6/6\" in output"
+      }
+    ],
+    "tags": [
+      "collateral-extreme",
+      "deep-investigation",
+      "red-herrings"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "api/__init__.py": "",
+      "api/routes.py": "\"\"\"API route handlers.\"\"\"\nfrom services.user_service import UserService\n\n_svc = UserService()\n\ndef handle_create_user(data):\n    \"\"\"Handle POST /users.\"\"\"\n    try:\n        return {\"status\": 200, \"user\": _svc.create_user(data)}\n    except Exception as e:\n        return {\"status\": 500, \"error\": str(e)}\n\ndef handle_get_user(user_id):\n    \"\"\"Handle GET /users/:id.\"\"\"\n    user = _svc.get_user(user_id)\n    if user is None:\n        return {\"status\": 404, \"error\": \"User not found\"}\n    return {\"status\": 200, \"user\": user}\n\ndef handle_list_users(params):\n    \"\"\"Handle GET /users.\"\"\"\n    return {\"status\": 200, \"users\": _svc.list_users(**params)}\n",
+      "services/__init__.py": "",
+      "services/user_service.py": "\"\"\"User service — business logic layer.\"\"\"\nfrom models.user import User\nfrom utils.validators import validate_email, validate_name\n\nclass UserService:\n    def __init__(self):\n        self._users = {}\n        self._next_id = 1\n\n    def create_user(self, data):\n        name = data.get(\"name\", \"\")\n        email = data.get(\"email\", \"\")\n        # Validate\n        validate_name(name)\n        validate_email(email)\n        user = User(self._next_id, name, email)\n        self._users[self._next_id] = user\n        self._next_id += 1\n        return user.to_dict()\n\n    def get_user(self, user_id):\n        user = self._users.get(user_id)\n        return user.to_dict() if user else None\n\n    def list_users(self, limit=50, offset=0):\n        users = list(self._users.values())\n        return [u.to_dict() for u in users[offset:offset+limit]]\n",
+      "models/__init__.py": "",
+      "models/user.py": "\"\"\"User model.\"\"\"\nfrom datetime import datetime\n\nclass User:\n    def __init__(self, id, name, email):\n        self.id = id\n        self.name = name\n        self.email = email\n        self.created_at = datetime.utcnow().isoformat()\n\n    def to_dict(self):\n        return {\n            \"id\": self.id,\n            \"name\": self.name,\n            \"email\": self.email,\n            \"created_at\": self.created_at,\n        }\n",
+      "utils/__init__.py": "",
+      "utils/validators.py": "\"\"\"Input validators for user data.\"\"\"\nimport re\n\ndef validate_name(name):\n    \"\"\"Validate user name.\"\"\"\n    if not name or not name.strip():\n        raise ValueError(\"Name cannot be empty\")\n    if len(name) > 100:\n        raise ValueError(\"Name too long (max 100)\")\n    return True\n\ndef validate_email(email):\n    \"\"\"Validate email address.\n    BUG: The regex rejects valid emails with '+' in local part\n    and subdomains (e.g., user+tag@sub.example.com).\n    This causes HTTP 500 for users with these email patterns.\"\"\"\n    pattern = r\"^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+\\.[a-zA-Z]{2,}$\"  # BUG: no + in local, no subdomain dots\n    if not re.match(pattern, email):\n        raise ValueError(f\"Invalid email: {email}\")\n    return True\n\ndef validate_password(password):\n    \"\"\"Validate password strength.\"\"\"\n    if len(password) < 8:\n        raise ValueError(\"Password must be at least 8 characters\")\n    if not re.search(r\"[A-Z]\", password):\n        raise ValueError(\"Password must contain uppercase letter\")\n    if not re.search(r\"[0-9]\", password):\n        raise ValueError(\"Password must contain a digit\")\n    return True\n",
+      "config/__init__.py": "",
+      "config/settings.py": "\"\"\"Application settings. Looks suspicious but NOT the bug.\"\"\"\nimport os\n\n# These look like they could cause issues but they don't\nDATABASE_URL = os.environ.get(\"DATABASE_URL\", \"sqlite:///test.db\")\nSECRET_KEY = os.environ.get(\"SECRET_KEY\", \"dev-secret-key-CHANGE-IN-PROD\")  # noqa\nDEBUG = os.environ.get(\"DEBUG\", \"true\").lower() == \"true\"\nMAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB\nALLOWED_ORIGINS = [\"http://localhost:3000\"]\n\n# Rate limiting\nRATE_LIMIT_PER_MINUTE = 60\nRATE_LIMIT_BURST = 10\n",
+      "middleware/__init__.py": "",
+      "middleware/auth.py": "\"\"\"Auth middleware. Has a suspicious pattern but NOT the bug.\"\"\"\nimport hashlib\nimport time\n\nclass AuthMiddleware:\n    def __init__(self):\n        self.sessions = {}\n\n    def create_session(self, user_id):\n        token = hashlib.sha256(f\"{user_id}:{time.time()}\".encode()).hexdigest()\n        self.sessions[token] = {\"user_id\": user_id, \"created\": time.time()}\n        return token\n\n    def validate_session(self, token):\n        session = self.sessions.get(token)\n        if not session:\n            return None\n        # Sessions expire after 1 hour\n        if time.time() - session[\"created\"] > 3600:\n            del self.sessions[token]\n            return None\n        return session[\"user_id\"]\n",
+      "middleware/logging.py": "\"\"\"Logging middleware. NOT the bug.\"\"\"\nimport datetime\n\nclass RequestLogger:\n    def __init__(self):\n        self.logs = []\n\n    def log(self, method, path, status, duration_ms):\n        self.logs.append({\n            \"timestamp\": datetime.datetime.utcnow().isoformat(),\n            \"method\": method,\n            \"path\": path,\n            \"status\": status,\n            \"duration_ms\": duration_ms,\n        })\n\n    def get_recent(self, n=100):\n        return self.logs[-n:]\n",
+      "db/__init__.py": "",
+      "db/connection.py": "\"\"\"Database connection. NOT the bug — just an in-memory store.\"\"\"\n\nclass InMemoryDB:\n    def __init__(self):\n        self.tables = {}\n\n    def create_table(self, name, schema=None):\n        self.tables[name] = []\n\n    def insert(self, table, record):\n        if table not in self.tables:\n            self.tables[table] = []\n        self.tables[table].append(record)\n\n    def find(self, table, query=None):\n        rows = self.tables.get(table, [])\n        if query:\n            rows = [r for r in rows if all(r.get(k) == v for k, v in query.items())]\n        return rows\n",
+      "tests/__init__.py": "",
+      "tests/test_api.py": "\"\"\"API integration tests.\"\"\"\nimport sys\nsys.path.insert(0, \".\")\nfrom api.routes import handle_create_user, handle_get_user, handle_list_users\n\ndef test_create_simple():\n    result = handle_create_user({\"name\": \"Alice\", \"email\": \"alice@example.com\"})\n    assert result[\"status\"] == 200, f\"Create simple: {result}\"\n    print(\"  test_create_simple: OK\")\n\ndef test_create_with_plus():\n    \"\"\"The failing test — emails with + are valid but rejected.\"\"\"\n    result = handle_create_user({\"name\": \"Bob\", \"email\": \"bob+work@example.com\"})\n    assert result[\"status\"] == 200, f\"Create with +: {result}\"\n    print(\"  test_create_with_plus: OK\")\n\ndef test_create_subdomain():\n    \"\"\"Another failing test — subdomain emails are valid but rejected.\"\"\"\n    result = handle_create_user({\"name\": \"Carol\", \"email\": \"carol@mail.example.com\"})\n    assert result[\"status\"] == 200, f\"Create subdomain: {result}\"\n    print(\"  test_create_subdomain: OK\")\n\ndef test_get_user():\n    result = handle_create_user({\"name\": \"Dave\", \"email\": \"dave@example.com\"})\n    if result[\"status\"] == 200:\n        user_id = result[\"user\"][\"id\"]\n        get_result = handle_get_user(user_id)\n        assert get_result[\"status\"] == 200, f\"Get user: {get_result}\"\n    print(\"  test_get_user: OK\")\n\ndef test_empty_name():\n    result = handle_create_user({\"name\": \"\", \"email\": \"empty@example.com\"})\n    assert result[\"status\"] == 500, f\"Empty name should fail: {result}\"\n    print(\"  test_empty_name: OK\")\n\ndef test_list_users():\n    result = handle_list_users({\"limit\": 10, \"offset\": 0})\n    assert result[\"status\"] == 200\n    assert isinstance(result[\"users\"], list)\n    print(\"  test_list_users: OK\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name, func in sorted(globals().items()):\n        if name.startswith(\"test_\"):\n            try:\n                func()\n                passed += 1\n            except Exception as e:\n                print(f\"  {name}: FAIL — {e}\")\n                failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed} passed\")\n    if failed == 0:\n        print(\"ALL TESTS PASSED\")\n",
+      "README.md": "# UserAPI\nA simple user management API.\n",
+      "requirements.txt": "# No external dependencies\n",
+      "Makefile": "test:\\n\\tpython tests/test_api.py\\n"
+    },
+    "setup_script": "find . -type f \\( -name \"*.py\" -o -name \"*.md\" -o -name \"*.txt\" \\) | sort | while read f; do md5sum \"$f\" 2>/dev/null || md5 -r \"$f\"; done > /tmp/pre_snapshot.txt 2>/dev/null; true"
+  },
+  "started_at": "2026-03-21T04:52:35.755153+00:00",
+  "finished_at": "2026-03-21T04:53:54.357037+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}
