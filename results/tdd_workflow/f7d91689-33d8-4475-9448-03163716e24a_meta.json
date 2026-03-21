@@ -1,0 +1,129 @@
+{
+  "run_id": "f7d91689-33d8-4475-9448-03163716e24a",
+  "experiment": {
+    "name": "tdd_workflow",
+    "description": "TDD (write tests first) vs implement-first workflow. Same model (haiku), same tools. Tests whether TDD forces better spec understanding.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "implement-first vs TDD (write tests then implement)"
+    },
+    "agent_a": {
+      "name": "implement_first",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are implementing Python modules from spec files.\nWorkflow: Read the spec → implement the module → write a test file (test_<module>.py) → run tests → fix any failures.\nFocus on getting the implementation right first.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "tdd",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are implementing Python modules from spec files.\nWorkflow — STRICT TDD:\n1. Read the spec carefully\n2. Write test file FIRST (test_<module>.py) with comprehensive tests\n3. Run tests — they should all FAIL (since module doesn't exist yet)\n4. Implement the module to make tests pass\n5. Run tests again — iterate until all pass\nIMPORTANT: Write tests BEFORE any implementation.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 20,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Read spec_stack.md. Implement MinMaxStack in stack.py with tests.",
+        "expected": "pass",
+        "difficulty": "medium",
+        "tags": [
+          "stack",
+          "data-structure"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read spec_lru.md. Implement LRUCache in lru.py with tests.",
+        "expected": "pass",
+        "difficulty": "hard",
+        "tags": [
+          "lru",
+          "data-structure"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read spec_interval.md. Implement interval functions in interval.py with tests.",
+        "expected": "pass",
+        "difficulty": "medium",
+        "tags": [
+          "interval",
+          "algorithm"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read spec_graph.md. Implement graph utilities in graph.py with tests.",
+        "expected": "pass",
+        "difficulty": "hard",
+        "tags": [
+          "graph",
+          "algorithm"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read spec_tokenizer.md. Implement tokenize() in tokenizer.py with tests.",
+        "expected": "pass",
+        "difficulty": "medium",
+        "tags": [
+          "parser",
+          "tokenizer"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      },
+      {
+        "__task__": true,
+        "prompt": "Read spec_csv.md. Implement CSV parser in csv_parser.py with tests.",
+        "expected": "pass",
+        "difficulty": "hard",
+        "tags": [
+          "parser",
+          "csv"
+        ],
+        "check_fn": "\"pass\" in output.lower() and \"fail\" not in output.lower().split(\"pass\")[0]"
+      }
+    ],
+    "tags": [
+      "tdd",
+      "workflow",
+      "agent-optimization"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "spec_stack.md": "# Stack with Min/Max\n\nImplement `MinMaxStack` in `stack.py`:\n- `push(val)` — push value onto stack\n- `pop()` — remove and return top value (raise IndexError if empty)\n- `peek()` — return top value without removing (raise IndexError if empty)\n- `get_min()` — return current minimum in O(1) (raise IndexError if empty)\n- `get_max()` — return current maximum in O(1) (raise IndexError if empty)\n- `size()` — return number of elements\n- All operations must be O(1) time complexity.\n",
+      "spec_lru.md": "# LRU Cache\n\nImplement `LRUCache` in `lru.py`:\n- `__init__(capacity)` — create cache with given max capacity\n- `get(key)` — return value if exists, else -1. Marks as recently used.\n- `put(key, value)` — insert/update. If at capacity, evict least recently used.\n- Both get and put must be O(1) average time.\n",
+      "spec_interval.md": "# Interval Scheduler\n\nImplement in `interval.py`:\n- `merge_intervals(intervals)` — merge overlapping intervals\n  Input: list of [start, end], Output: merged list\n- `insert_interval(intervals, new)` — insert a new interval into sorted non-overlapping list, merging if needed\n- `can_attend_all(intervals)` — return True if no intervals overlap\n\nAll intervals are [start, end] where start <= end.\n",
+      "spec_graph.md": "# Graph Utilities\n\nImplement in `graph.py`:\n- `has_cycle(adj_list)` — return True if directed graph has a cycle\n  adj_list: dict mapping node -> list of neighbors\n- `shortest_path(adj_list, start, end)` — return shortest path as list of nodes, or None\n  Uses BFS (unweighted graph)\n- `topological_sort(adj_list)` — return topological ordering, or None if cycle exists\n",
+      "spec_tokenizer.md": "# Expression Tokenizer\n\nImplement in `tokenizer.py`:\n- `tokenize(expr)` — convert math expression string to list of tokens\n- Token types: NUMBER (int or float), OPERATOR (+,-,*,/), LPAREN, RPAREN\n- Each token is a dict: {\"type\": \"NUMBER\", \"value\": 42} or {\"type\": \"OPERATOR\", \"value\": \"+\"}\n- Handle: whitespace (ignore), negative numbers (-3), decimal numbers (3.14)\n- Raise ValueError on invalid characters\n",
+      "spec_csv.md": "# CSV Parser\n\nImplement in `csv_parser.py`:\n- `parse_csv(text)` — parse CSV string to list of dicts\n  First row is header. Return list of {column_name: value} dicts.\n- `to_csv(records, columns=None)` — convert list of dicts to CSV string\n  If columns not specified, use keys from first record.\n- Handle: quoted fields with commas, escaped quotes, empty fields, newlines in quoted fields\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T05:23:28.171334+00:00",
+  "finished_at": "2026-03-21T05:34:07.358256+00:00",
+  "num_tasks": 6,
+  "trials_a_count": 18,
+  "trials_b_count": 18
+}

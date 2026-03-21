@@ -1,0 +1,78 @@
+{
+  "run_id": "dc82f52a-061d-4547-9deb-84379e6c762c",
+  "experiment": {
+    "name": "scratchpad_memory",
+    "description": "Scratchpad working memory vs no scratchpad on multi-step project task. Same model (haiku). Tests whether externalized state helps coherence.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "No scratchpad vs explicit scratchpad for tracking state"
+    },
+    "agent_a": {
+      "name": "no_scratchpad",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior developer working on a Python project. Complete all the tasks described in the prompt.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 25,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "with_scratchpad",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior developer working on a Python project.\n\nIMPORTANT: Use _scratch.md as your working memory. Before starting:\n1. Create _scratch.md\n2. Write your plan there\n3. As you investigate, update it with findings\n4. Track which files you've read and what you've learned\n5. Check off completed steps\n\nThis scratchpad helps you stay organized across many tool calls.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 25,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "This project has several issues to investigate and fix. Do the following in order:\n\n1. Run tests/test_integration.py to see which tests pass and which fail\n2. Read all source files in project/ to understand the architecture\n3. Fix any failing tests by modifying the source code (not tests)\n4. Add a new feature: POST requests to any path should invalidate the cache for that path. Update handle_request() in app.py.\n5. Add a test for the new cache invalidation feature in test_integration.py\n6. Run all tests to verify everything passes\n7. Report: which modules you changed, what you fixed, and what you added",
+        "expected": "ALL TESTS PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "multi-step",
+          "investigation",
+          "feature-add"
+        ],
+        "check_fn": "\"pass\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "scratchpad",
+      "working-memory",
+      "agent-optimization"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "project/app.py": "\"\"\"Main application — imports and uses all modules.\"\"\"\nfrom project.auth import Authenticator\nfrom project.cache import Cache\nfrom project.logger import Logger\n\nclass App:\n    def __init__(self):\n        self.auth = Authenticator(secret=\"app-secret-key\")\n        self.cache = Cache(max_size=100)\n        self.logger = Logger(\"app\")\n        self._request_count = 0\n\n    def handle_request(self, method, path, headers=None, body=None):\n        self._request_count += 1\n        self.logger.info(f\"{method} {path}\")\n\n        # Auth check\n        token = (headers or {}).get(\"Authorization\", \"\").replace(\"Bearer \", \"\")\n        user = self.auth.validate_token(token) if token else None\n\n        # Cache check for GET\n        if method == \"GET\":\n            cached = self.cache.get(path)\n            if cached is not None:\n                self.logger.debug(f\"Cache hit: {path}\")\n                return {\"status\": 200, \"body\": cached, \"cached\": True}\n\n        # Route\n        if path == \"/status\":\n            result = {\"requests\": self._request_count, \"cache_size\": self.cache.size()}\n        elif path == \"/protected\" and user is None:\n            return {\"status\": 401, \"body\": \"Unauthorized\"}\n        elif path == \"/protected\":\n            result = {\"user\": user, \"message\": \"Welcome\"}\n        else:\n            return {\"status\": 404, \"body\": \"Not Found\"}\n\n        # Cache SET for successful GET responses\n        if method == \"GET\":\n            self.cache.set(path, result)\n\n        return {\"status\": 200, \"body\": result}\n",
+      "project/__init__.py": "",
+      "project/auth.py": "\"\"\"Authentication module.\"\"\"\nimport hashlib\nimport time\n\nclass Authenticator:\n    def __init__(self, secret=\"default\"):\n        self.secret = secret\n        self.tokens = {}  # token -> {user, expires}\n\n    def create_token(self, username, ttl=3600):\n        raw = f\"{username}:{time.time()}:{self.secret}\"\n        token = hashlib.sha256(raw.encode()).hexdigest()[:32]\n        self.tokens[token] = {\n            \"user\": username,\n            \"expires\": time.time() + ttl,\n        }\n        return token\n\n    def validate_token(self, token):\n        entry = self.tokens.get(token)\n        if entry is None:\n            return None\n        if time.time() > entry[\"expires\"]:\n            del self.tokens[token]\n            return None\n        return entry[\"user\"]\n\n    def revoke_token(self, token):\n        self.tokens.pop(token, None)\n",
+      "project/cache.py": "\"\"\"In-memory cache with size limit and LRU eviction.\"\"\"\nfrom collections import OrderedDict\n\nclass Cache:\n    def __init__(self, max_size=100):\n        self.max_size = max_size\n        self.store = OrderedDict()\n\n    def get(self, key):\n        if key in self.store:\n            self.store.move_to_end(key)\n            return self.store[key]\n        return None\n\n    def set(self, key, value):\n        if key in self.store:\n            self.store.move_to_end(key)\n        self.store[key] = value\n        if len(self.store) > self.max_size:\n            self.store.popitem(last=False)\n\n    def invalidate(self, key):\n        self.store.pop(key, None)\n\n    def clear(self):\n        self.store.clear()\n\n    def size(self):\n        return len(self.store)\n",
+      "project/logger.py": "\"\"\"Simple logger.\"\"\"\nimport datetime\n\nclass Logger:\n    def __init__(self, name):\n        self.name = name\n        self.entries = []\n\n    def _log(self, level, msg):\n        entry = {\n            \"timestamp\": datetime.datetime.utcnow().isoformat(),\n            \"level\": level,\n            \"logger\": self.name,\n            \"message\": msg,\n        }\n        self.entries.append(entry)\n\n    def info(self, msg): self._log(\"INFO\", msg)\n    def debug(self, msg): self._log(\"DEBUG\", msg)\n    def error(self, msg): self._log(\"ERROR\", msg)\n    def warning(self, msg): self._log(\"WARNING\", msg)\n\n    def get_entries(self, level=None, limit=100):\n        entries = self.entries\n        if level:\n            entries = [e for e in entries if e[\"level\"] == level]\n        return entries[-limit:]\n",
+      "tests/__init__.py": "",
+      "tests/test_integration.py": "\"\"\"Integration tests for the full app.\"\"\"\nimport sys, time\nsys.path.insert(0, \".\")\nfrom project.app import App\n\ndef test_status_endpoint():\n    app = App()\n    r = app.handle_request(\"GET\", \"/status\")\n    assert r[\"status\"] == 200\n    assert r[\"body\"][\"requests\"] == 1\n    print(\"  test_status: OK\")\n\ndef test_caching():\n    app = App()\n    r1 = app.handle_request(\"GET\", \"/status\")\n    r2 = app.handle_request(\"GET\", \"/status\")\n    assert r2.get(\"cached\") == True, f\"Second request should be cached: {r2}\"\n    print(\"  test_caching: OK\")\n\ndef test_auth_flow():\n    app = App()\n    # Without token\n    r1 = app.handle_request(\"GET\", \"/protected\")\n    assert r1[\"status\"] == 401\n\n    # With valid token\n    token = app.auth.create_token(\"alice\")\n    r2 = app.handle_request(\"GET\", \"/protected\", headers={\"Authorization\": f\"Bearer {token}\"})\n    assert r2[\"status\"] == 200\n    assert r2[\"body\"][\"user\"] == \"alice\"\n    print(\"  test_auth: OK\")\n\ndef test_404():\n    app = App()\n    r = app.handle_request(\"GET\", \"/nonexistent\")\n    assert r[\"status\"] == 404\n    print(\"  test_404: OK\")\n\ndef test_logging():\n    app = App()\n    app.handle_request(\"GET\", \"/status\")\n    app.handle_request(\"GET\", \"/nonexistent\")\n    entries = app.logger.get_entries()\n    assert len(entries) >= 2\n    print(\"  test_logging: OK\")\n\ndef test_cache_invalidation():\n    \"\"\"After POST, cached GET should be invalidated (if implemented).\"\"\"\n    app = App()\n    app.handle_request(\"GET\", \"/status\")\n    # TODO: POST to /status should invalidate cache\n    # For now, just verify cache is working\n    assert app.cache.size() >= 1\n    app.cache.invalidate(\"/status\")\n    assert app.cache.get(\"/status\") is None\n    print(\"  test_cache_invalidation: OK\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name, func in sorted(globals().items()):\n        if name.startswith(\"test_\"):\n            try:\n                func()\n                passed += 1\n            except Exception as e:\n                print(f\"  {name}: FAIL — {e}\")\n                failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"ALL TESTS PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T05:16:49.359199+00:00",
+  "finished_at": "2026-03-21T05:19:34.702647+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 5,
+  "trials_b_count": 5
+}

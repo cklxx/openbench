@@ -1,0 +1,135 @@
+{
+  "run_id": "8c2afc45-55ed-4b4f-8c8f-d50ba6372b97",
+  "experiment": {
+    "name": "fewshot_tool_examples",
+    "description": "Instructions-only vs instructions + 2 worked examples of good tool use. Same model (haiku), 6 bug-fix tasks.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Instructions-only vs instructions + few-shot tool-use examples"
+    },
+    "agent_a": {
+      "name": "instructions_only",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a coding assistant. When fixing bugs:\n1. Read the relevant files to understand the code\n2. Run the tests to see the failure\n3. Make minimal, precise edits\n4. Run tests again to verify\nDo not modify test files.",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "with_examples",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a coding assistant. When fixing bugs:\n1. Read the relevant files to understand the code\n2. Run the tests to see the failure\n3. Make minimal, precise edits\n4. Run tests again to verify\nDo not modify test files.\n\n## Example 1: Fixing an off-by-one error\n\nTask: \"Fix the bug in counter.py. Run test_counter.py.\"\n\nGood tool sequence:\n1. Read test_counter.py → understand expected behavior\n2. Read counter.py → find the bug (range(n) should be range(n+1))\n3. Edit counter.py → change line 5: range(n) to range(n+1)\n4. Bash: python test_counter.py → verify all tests pass\n\n## Example 2: Fixing a missing import\n\nTask: \"Fix the bug in utils.py. Run test_utils.py.\"\n\nGood tool sequence:\n1. Bash: python test_utils.py → see error: \"NameError: name 'json' is not defined\"\n2. Read utils.py → see json.loads() used but no import\n3. Edit utils.py → add \"import json\" at top\n4. Bash: python test_utils.py → verify all tests pass\n\nKey patterns:\n- Always READ before EDIT (understand context first)\n- Run tests BEFORE and AFTER changes\n- Make the SMALLEST change that fixes the issue\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task1/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "bug-fix",
+          "missing-return"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task2/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "bug-fix",
+          "wrong-operator"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task3/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "bug-fix",
+          "dict-mutation"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task4/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "bug-fix",
+          "double-encoding"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task5/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "bug-fix",
+          "recursive-check"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/task6/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "bug-fix",
+          "error-propagation"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "few-shot",
+      "tool-examples",
+      "agent-optimization"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "tasks/task1/calc.py": "def calculate_total(items):\n    \"\"\"Calculate total price of items with tax.\"\"\"\n    subtotal = sum(item[\"price\"] * item[\"qty\"] for item in items)\n    tax = subtotal * 0.08\n    total = subtotal + tax\n    # Bug: missing return statement\n",
+      "tasks/task1/test_calc.py": "from calc import calculate_total\nitems = [{\"price\": 10.0, \"qty\": 2}, {\"price\": 5.0, \"qty\": 3}]\nresult = calculate_total(items)\nassert result is not None, \"Function returned None\"\nassert abs(result - 37.8) < 0.01, f\"Expected 37.8, got {result}\"\nprint(\"test_calc: PASSED\")\n",
+      "tasks/task2/validator.py": "def is_valid_range(value, min_val, max_val):\n    \"\"\"Check if value is within [min_val, max_val] inclusive.\"\"\"\n    return min_val <= value or value <= max_val  # Bug: or should be and\n",
+      "tasks/task2/test_validator.py": "from validator import is_valid_range\nassert is_valid_range(5, 1, 10) == True\nassert is_valid_range(0, 1, 10) == False  # Below range\nassert is_valid_range(11, 1, 10) == False  # Above range\nassert is_valid_range(1, 1, 10) == True   # Boundary\nassert is_valid_range(10, 1, 10) == True  # Boundary\nprint(\"test_validator: PASSED\")\n",
+      "tasks/task3/registry.py": "class Registry:\n    def __init__(self):\n        self.items = {}\n\n    def register(self, name, value):\n        self.items[name] = value\n\n    def remove_expired(self, is_expired_fn):\n        \"\"\"Remove items where is_expired_fn(value) returns True.\"\"\"\n        for name, value in self.items.items():  # Bug: iterating while modifying\n            if is_expired_fn(value):\n                del self.items[name]\n",
+      "tasks/task3/test_registry.py": "from registry import Registry\nr = Registry()\nr.register(\"a\", {\"ts\": 1})\nr.register(\"b\", {\"ts\": 100})\nr.register(\"c\", {\"ts\": 2})\nr.remove_expired(lambda v: v[\"ts\"] < 50)\nassert \"b\" in r.items, f\"b should remain: {r.items}\"\nassert \"a\" not in r.items\nassert \"c\" not in r.items\nassert len(r.items) == 1\nprint(\"test_registry: PASSED\")\n",
+      "tasks/task4/encoder.py": "def encode_url(url):\n    \"\"\"Simple URL encoding for special characters.\"\"\"\n    replacements = {\n        \" \": \"%20\",\n        \"&\": \"%26\",\n        \"=\": \"%3D\",\n        \"?\": \"%3F\",\n        \"#\": \"%23\",\n    }\n    result = url\n    for char, encoded in replacements.items():\n        result = result.replace(char, encoded)\n    return result\n\ndef decode_url(encoded_url):\n    \"\"\"Decode URL-encoded string.\"\"\"\n    replacements = {\n        \"%20\": \" \",\n        \"%26\": \"&\",\n        \"%3D\": \"=\",\n        \"%3F\": \"?\",\n        \"%23\": \"#\",\n    }\n    result = encoded_url\n    for encoded, char in replacements.items():\n        result = result.replace(encoded, char)\n    return result\n",
+      "tasks/task4/test_encoder.py": "from encoder import encode_url, decode_url\n# Basic encoding\nassert encode_url(\"hello world\") == \"hello%20world\"\nassert encode_url(\"a=1&b=2\") == \"a%3D1%26b%3D2\"\n# Roundtrip\noriginal = \"search?q=hello world&page=1#results\"\nassert decode_url(encode_url(original)) == original, f\"Roundtrip failed: {decode_url(encode_url(original))}\"\n# Double encoding should NOT happen\nassert encode_url(\"%20\") == \"%20\", f\"Double encoded: {encode_url('%20')}\"\nprint(\"test_encoder: PASSED\")\n",
+      "tasks/task5/tree.py": "class TreeNode:\n    def __init__(self, val, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right\n\ndef max_depth(root):\n    \"\"\"Return the maximum depth of a binary tree.\"\"\"\n    if root is None:\n        return 0\n    return 1 + max(max_depth(root.left), max_depth(root.right))\n\ndef is_balanced(root):\n    \"\"\"Check if tree is height-balanced (depth of subtrees differs by at most 1).\"\"\"\n    if root is None:\n        return True\n    left_depth = max_depth(root.left)\n    right_depth = max_depth(root.right)\n    # Bug: only checks root, not recursively\n    return abs(left_depth - right_depth) <= 1\n",
+      "tasks/task5/test_tree.py": "from tree import TreeNode, max_depth, is_balanced\n# Balanced tree\nt1 = TreeNode(1, TreeNode(2, TreeNode(4), TreeNode(5)), TreeNode(3))\nassert max_depth(t1) == 3\nassert is_balanced(t1) == True\n\n# Unbalanced at root — easy case\nt2 = TreeNode(1, TreeNode(2, TreeNode(3, TreeNode(4), None), None), None)\nassert is_balanced(t2) == False\n\n# Tricky: balanced at root but unbalanced in subtree\nt3 = TreeNode(1,\n    TreeNode(2, TreeNode(4, TreeNode(6), None), TreeNode(5)),\n    TreeNode(3, None, TreeNode(7))\n)\n# Left subtree depth: 3 (1->2->4->6). Right subtree depth: 2 (1->3->7).\n# Root: |3-2|=1 OK. But left subtree: left=2 (4->6), right=1 (5). |2-1|=1 OK actually.\n# Let me make it truly unbalanced in subtree:\nt4 = TreeNode(1,\n    TreeNode(2, TreeNode(4, TreeNode(6, TreeNode(8), None), None), TreeNode(5)),\n    TreeNode(3, None, TreeNode(7))\n)\n# Root: left_depth=4, right_depth=2. |4-2|=2 > 1. Not balanced.\nassert is_balanced(t4) == False\n\n# But what about this one where root LOOKS balanced:\nt5 = TreeNode(1,\n    TreeNode(2, TreeNode(4, TreeNode(6, TreeNode(8), None), None), None),\n    TreeNode(3, None, TreeNode(5, None, TreeNode(7, None, TreeNode(9))))\n)\n# Both sides have depth 4. Root: |4-4|=0. But each subtree is a chain (unbalanced).\nassert is_balanced(t5) == False, \"Subtrees are chains — not balanced\"\n\nprint(\"test_tree: PASSED\")\n",
+      "tasks/task6/pipeline.py": "class Pipeline:\n    \"\"\"Data processing pipeline with middleware-style transforms.\"\"\"\n    def __init__(self):\n        self.steps = []\n\n    def add_step(self, name, transform_fn):\n        self.steps.append((name, transform_fn))\n\n    def process(self, data):\n        \"\"\"Run data through all steps in order, collecting results.\"\"\"\n        results = {\"input\": data, \"steps\": [], \"output\": None}\n        current = data\n        for name, fn in self.steps:\n            try:\n                current = fn(current)\n                results[\"steps\"].append({\"name\": name, \"status\": \"ok\", \"output\": current})\n            except Exception as e:\n                results[\"steps\"].append({\"name\": name, \"status\": \"error\", \"error\": str(e)})\n                results[\"output\"] = current  # Bug: should break on error, not continue\n        results[\"output\"] = current\n        return results\n",
+      "tasks/task6/test_pipeline.py": "from pipeline import Pipeline\n\n# Normal flow\np = Pipeline()\np.add_step(\"double\", lambda x: x * 2)\np.add_step(\"add_one\", lambda x: x + 1)\nresult = p.process(5)\nassert result[\"output\"] == 11, f\"Expected 11, got {result['output']}\"\nassert len(result[\"steps\"]) == 2\nassert all(s[\"status\"] == \"ok\" for s in result[\"steps\"])\n\n# Error should stop pipeline\np2 = Pipeline()\np2.add_step(\"parse\", lambda x: int(x))\np2.add_step(\"double\", lambda x: x * 2)  # Should NOT run\np2.add_step(\"format\", lambda x: f\"result={x}\")  # Should NOT run\nresult2 = p2.process(\"abc\")\nassert result2[\"steps\"][0][\"status\"] == \"error\"\n# Pipeline should stop after error — only 1 step should have run\nerror_steps = [s for s in result2[\"steps\"] if s[\"status\"] == \"error\"]\nok_steps = [s for s in result2[\"steps\"] if s[\"status\"] == \"ok\"]\nassert len(error_steps) == 1, f\"Should have exactly 1 error step, got {len(error_steps)}\"\nassert len(ok_steps) == 0, f\"No steps should succeed after error, got {len(ok_steps)}\"\nassert result2[\"output\"] == \"abc\", f\"Output should be last good value (input), got {result2['output']}\"\n\nprint(\"test_pipeline: PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T05:16:49.359228+00:00",
+  "finished_at": "2026-03-21T05:22:50.409304+00:00",
+  "num_tasks": 6,
+  "trials_a_count": 18,
+  "trials_b_count": 18
+}
