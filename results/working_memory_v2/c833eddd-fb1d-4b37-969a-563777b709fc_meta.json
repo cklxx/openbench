@@ -1,0 +1,119 @@
+{
+  "run_id": "c833eddd-fb1d-4b37-969a-563777b709fc",
+  "experiment": {
+    "name": "working_memory_v2",
+    "description": "Forced scratchpad vs implicit memory in multi-file debugging. Extreme FORBIDDEN constraints. 4 tasks × 5 samples. Tests whether externalized notes help track cross-file dependencies.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Implicit context-window memory vs forced scratchpad notes"
+    },
+    "agent_a": {
+      "name": "implicit_memory",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior developer debugging a Python project.\n\n1. Run the test file to see failures\n2. Read source files to understand the code\n3. Fix the bugs\n4. Run the tests again to verify\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 12,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "forced_scratchpad",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior developer debugging a Python project.\n\nSTRICT RULES — follow these EXACTLY:\n\nSTEP 1: Create _notes.md in the task directory as your FIRST action.\n\nSTEP 2: Run the test file to see failures. Update _notes.md with:\n  - Which tests failed and the error messages\n\nSTEP 3: Read each source file. After reading EACH file, update _notes.md with:\n  - File name and what it does\n  - Key variables, values, or formulas\n  - Anything suspicious — potential bugs\n  - How this file connects to other files you've read\n\nSTEP 4: Review _notes.md. Write a \"DIAGNOSIS\" section listing all bugs\nyou've identified and which file each is in.\n\nSTEP 5: Fix all bugs based on your diagnosis.\n\nSTEP 6: Run the test to verify. Print the output.\n\nCRITICAL CONSTRAINTS:\n- You are FORBIDDEN from using Edit on any .py source file unless\n  _notes.md exists AND has been updated within your last 2 tool calls\n- After reading each source file, you MUST update _notes.md BEFORE\n  reading the next file or making any edit\n- Your notes prevent forgetting what you learned in earlier files\n- Every fact you discover must be written down, not held in your head\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 12,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/. Test: cd tasks/t1 && python test_system.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "config-cascade",
+          "cross-file"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t2/. Test: cd tasks/t2 && python test_pipeline.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "data-pipeline",
+          "type-error"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/. Test: cd tasks/t3 && python test_events.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "event-system",
+          "cross-file-dependency"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t4/. Test: cd tasks/t4 && python test_auth.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "auth-roles",
+          "mutation"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "working-memory",
+      "scratchpad",
+      "multi-file-debugging"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/config.py": "\"\"\"Application configuration.\"\"\"\nDATABASE_POOL_SIZE = 5\nREQUEST_TIMEOUT = 30\nMAX_RETRIES = 3\n",
+      "tasks/t1/server.py": "\"\"\"Server — connection pool using config.\"\"\"\nfrom config import DATABASE_POOL_SIZE, REQUEST_TIMEOUT\n\nclass Server:\n    def __init__(self):\n        self.pool_size = DATABASE_POOL_SIZE\n        self.timeout = REQUEST_TIMEOUT\n        self.connections = []\n\n    def accept_connection(self, client_id):\n        if len(self.connections) >= self.pool_size:\n            return {\"status\": \"rejected\", \"reason\": \"pool_full\"}\n        self.connections.append({\"id\": client_id, \"active\": True})\n        return {\"status\": \"accepted\", \"id\": client_id}\n\n    def get_stats(self):\n        return {\n            \"pool_size\": self.pool_size,\n            \"active\": len(self.connections),\n            \"available\": self.pool_size - len(self.connections),\n        }\n",
+      "tasks/t1/client.py": "\"\"\"Client — connects with retry logic.\"\"\"\nfrom config import MAX_RETRIES\n\nclass Client:\n    def __init__(self, server):\n        self.server = server\n        self.max_retries = MAX_RETRIES\n        self.log = []\n\n    def connect(self, client_id):\n        for attempt in range(self.max_retries):\n            result = self.server.accept_connection(client_id)\n            self.log.append({\"attempt\": attempt + 1, \"result\": result[\"status\"]})\n            # Bug: missing early return on success — retries even after accepted\n        return result\n\n    def get_log(self):\n        return self.log\n",
+      "tasks/t1/test_system.py": "import sys; sys.path.insert(0, \".\")\nfrom server import Server\nfrom client import Client\n\ndef test_pool_capacity():\n    server = Server()\n    accepted = sum(1 for i in range(10) if server.accept_connection(f\"c{i}\")[\"status\"] == \"accepted\")\n    assert accepted == 10, f\"Expected 10 accepted, got {accepted} (pool_size={server.pool_size})\"\n    print(\"  pool_capacity: PASSED\")\n\ndef test_pool_overflow():\n    server = Server()\n    for i in range(10):\n        server.accept_connection(f\"c{i}\")\n    assert server.accept_connection(\"overflow\")[\"status\"] == \"rejected\"\n    print(\"  pool_overflow: PASSED\")\n\ndef test_client_stops_on_success():\n    \"\"\"Client should stop retrying after first successful connection.\"\"\"\n    server = Server()\n    client = Client(server)\n    result = client.connect(\"user1\")\n    assert result[\"status\"] == \"accepted\"\n    assert len(client.get_log()) == 1, f\"Should stop after 1 attempt, got {len(client.get_log())}\"\n    print(\"  client_stops_on_success: PASSED\")\n\ndef test_client_retries_on_full():\n    server = Server()\n    for i in range(10):\n        server.accept_connection(f\"filler{i}\")\n    client = Client(server)\n    result = client.connect(\"late\")\n    assert result[\"status\"] == \"rejected\"\n    assert len(client.get_log()) == 3\n    print(\"  client_retries_on_full: PASSED\")\n\ndef test_stats():\n    server = Server()\n    server.accept_connection(\"c1\")\n    server.accept_connection(\"c2\")\n    s = server.get_stats()\n    assert s[\"pool_size\"] == 10 and s[\"active\"] == 2 and s[\"available\"] == 8, f\"Stats: {s}\"\n    print(\"  stats: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_pool_capacity\", \"test_pool_overflow\",\n                  \"test_client_stops_on_success\", \"test_client_retries_on_full\", \"test_stats\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/parser.py": "\"\"\"Parse CSV-like input into records.\"\"\"\n\ndef parse_records(text):\n    records = []\n    for line in text.strip().split(\"\\n\"):\n        if not line.strip():\n            continue\n        parts = line.split(\",\")\n        if len(parts) != 3:\n            continue\n        name = parts[0].strip()\n        try:\n            value = int(parts[1].strip())\n        except ValueError:\n            continue\n        category = parts[2].strip()\n        records.append({\"name\": name, \"value\": value, \"category\": category})\n    return records\n",
+      "tasks/t2/pipeline.py": "\"\"\"Data pipeline: filter and summarize.\"\"\"\n\ndef filter_records(records, min_value=0):\n    return [r for r in records if r[\"value\"] > min_value]\n\ndef summarize(records):\n    result = {}\n    for r in records:\n        cat = r[\"category\"]\n        if cat not in result:\n            result[cat] = {\"total\": 0, \"count\": 0}\n        result[cat][\"total\"] += r[\"value\"]\n        result[cat][\"count\"] += 1\n    for cat in result:\n        result[cat][\"average\"] = result[cat][\"total\"] / result[cat][\"count\"]\n    return result\n\ndef run_pipeline(text, min_value=0):\n    from parser import parse_records\n    records = parse_records(text)\n    filtered = filter_records(records, min_value)\n    return summarize(filtered)\n",
+      "tasks/t2/formatter.py": "\"\"\"Output formatting for pipeline results.\"\"\"\n\ndef format_report(summary):\n    lines = []\n    for cat in sorted(summary):\n        s = summary[cat]\n        lines.append(f\"{cat}: total={s['total']:.2f}, count={s['count']}, avg={s['average']:.2f}\")\n    return \"\\n\".join(lines)\n",
+      "tasks/t2/test_pipeline.py": "import sys; sys.path.insert(0, \".\")\nfrom parser import parse_records\nfrom pipeline import filter_records, run_pipeline\n\nDATA = \"\"\"Alice,100,engineering\nBob,75.5,marketing\nCarol,100,engineering\nDave,50,marketing\nEve,200.75,engineering\nFrank,0,support\"\"\"\n\ndef test_parse_decimals():\n    records = parse_records(DATA)\n    bob = [r for r in records if r[\"name\"] == \"Bob\"][0]\n    assert bob[\"value\"] == 75.5, f\"Bob should be 75.5, got {bob['value']} (type: {type(bob['value']).__name__})\"\n    print(\"  parse_decimals: PASSED\")\n\ndef test_filter_inclusive():\n    records = parse_records(DATA)\n    filtered = filter_records(records, min_value=0)\n    names = [r[\"name\"] for r in filtered]\n    assert \"Frank\" in names, f\"Frank (value=0) missing with min_value=0: {names}\"\n    print(\"  filter_inclusive: PASSED\")\n\ndef test_pipeline_averages():\n    result = run_pipeline(DATA, min_value=0)\n    eng_avg = result[\"engineering\"][\"average\"]\n    expected = (100 + 100 + 200.75) / 3\n    assert abs(eng_avg - expected) < 0.01, f\"Eng avg: expected {expected:.2f}, got {eng_avg}\"\n    print(\"  pipeline_averages: PASSED\")\n\ndef test_filter_boundary():\n    records = parse_records(DATA)\n    filtered = filter_records(records, min_value=50)\n    names = sorted(r[\"name\"] for r in filtered)\n    assert \"Dave\" in names, f\"Dave (value=50) should be included at min_value=50: {names}\"\n    print(\"  filter_boundary: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_parse_decimals\", \"test_filter_inclusive\",\n                  \"test_pipeline_averages\", \"test_filter_boundary\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/events.py": "\"\"\"Event types and factory.\"\"\"\n\nCRITICAL = 3\nHIGH = 2\nNORMAL = 1\nLOW = 0\n\nclass Event:\n    def __init__(self, type, payload=None, priority=0):\n        self.type = type\n        self.payload = payload or {}\n        self.priority = priority\n\ndef create_event(type, payload=None):\n    priorities = {\"error\": CRITICAL, \"warning\": HIGH, \"info\": NORMAL, \"debug\": LOW}\n    prio = priorities.get(type, CRITICAL)  # Bug: should default to NORMAL\n    return Event(type, payload, prio)\n",
+      "tasks/t3/dispatcher.py": "\"\"\"Event dispatcher.\"\"\"\nfrom events import HIGH\n\nclass Dispatcher:\n    def __init__(self):\n        self.handlers = {}\n        self.processed = []\n\n    def register(self, event_type, handler):\n        if event_type not in self.handlers:\n            self.handlers[event_type] = []\n        self.handlers[event_type].append(handler)\n\n    def dispatch(self, event):\n        self.processed.append(event)\n        handlers = self.handlers.get(event.type, [])\n        if not handlers and event.priority >= HIGH:  # Bug: should be > HIGH (only CRITICAL)\n            handlers = self.handlers.get(\"error\", [])\n        results = []\n        for h in handlers:\n            results.append(h(event))\n        return results\n\n    def stats(self):\n        by_type = {}\n        for e in self.processed:\n            by_type[e.type] = by_type.get(e.type, 0) + 1\n        return {\"total\": len(self.processed), \"by_type\": by_type}\n",
+      "tasks/t3/handlers.py": "\"\"\"Event handlers.\"\"\"\n\ndef error_handler(event):\n    return {\"handled\": True, \"action\": \"alert\", \"type\": event.type}\n\ndef info_handler(event):\n    return {\"handled\": True, \"action\": \"log\", \"type\": event.type}\n",
+      "tasks/t3/test_events.py": "import sys; sys.path.insert(0, \".\")\nfrom events import create_event, CRITICAL, HIGH, NORMAL\nfrom dispatcher import Dispatcher\nfrom handlers import error_handler, info_handler\n\ndef test_known_priorities():\n    assert create_event(\"error\").priority == CRITICAL\n    assert create_event(\"info\").priority == NORMAL\n    print(\"  known_priorities: PASSED\")\n\ndef test_unknown_priority():\n    e = create_event(\"custom_metric\")\n    assert e.priority == NORMAL, f\"Unknown should be NORMAL ({NORMAL}), got {e.priority}\"\n    print(\"  unknown_priority: PASSED\")\n\ndef test_dispatch_registered():\n    d = Dispatcher()\n    d.register(\"error\", error_handler)\n    results = d.dispatch(create_event(\"error\"))\n    assert len(results) == 1 and results[0][\"action\"] == \"alert\"\n    print(\"  dispatch_registered: PASSED\")\n\ndef test_fallback_critical_only():\n    \"\"\"Only CRITICAL (not HIGH) should fall back to error handler.\"\"\"\n    d = Dispatcher()\n    d.register(\"error\", error_handler)\n    r = d.dispatch(create_event(\"warning\"))\n    assert len(r) == 0, f\"HIGH should NOT fall back: {r}\"\n    print(\"  fallback_critical_only: PASSED\")\n\ndef test_fallback_for_critical():\n    d = Dispatcher()\n    d.register(\"error\", error_handler)\n    from events import Event\n    e = Event(\"system_crash\", priority=CRITICAL)\n    results = d.dispatch(e)\n    assert len(results) == 1, f\"CRITICAL should fall back: {results}\"\n    print(\"  fallback_for_critical: PASSED\")\n\ndef test_no_fallback_low():\n    d = Dispatcher()\n    d.register(\"error\", error_handler)\n    r = d.dispatch(create_event(\"debug\"))\n    assert len(r) == 0\n    print(\"  no_fallback_low: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_known_priorities\", \"test_unknown_priority\",\n                  \"test_dispatch_registered\", \"test_fallback_critical_only\",\n                  \"test_fallback_for_critical\", \"test_no_fallback_low\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/users.py": "\"\"\"User store.\"\"\"\n\nclass UserStore:\n    def __init__(self):\n        self.users = {}\n\n    def create_user(self, username, role=\"viewer\"):\n        self.users[username] = {\"username\": username, \"role\": role}\n        return self.users[username]\n\n    def get_user(self, username):\n        return self.users.get(username)\n",
+      "tasks/t4/roles.py": "\"\"\"Role-based permissions.\"\"\"\n\nROLE_PERMISSIONS = {\n    \"viewer\": [\"read\"],\n    \"editor\": [\"read\", \"write\"],\n    \"admin\": [\"write\", \"delete\", \"manage_users\"],\n}\n\ndef get_permissions(role):\n    return ROLE_PERMISSIONS.get(role, [])\n\ndef has_permission(role, permission):\n    return permission in get_permissions(role)\n",
+      "tasks/t4/middleware.py": "\"\"\"Permission checking.\"\"\"\nfrom roles import has_permission\n\nclass AuthMiddleware:\n    def __init__(self, user_store):\n        self.user_store = user_store\n\n    def check_access(self, username, required_permission):\n        user = self.user_store.get_user(username)\n        if user is None:\n            return {\"allowed\": False, \"reason\": \"user_not_found\"}\n        role = user[\"role\"]\n        if has_permission(role, required_permission):\n            return {\"allowed\": True, \"role\": role}\n        return {\"allowed\": False, \"reason\": f\"role '{role}' lacks '{required_permission}'\"}\n",
+      "tasks/t4/test_auth.py": "import sys; sys.path.insert(0, \".\")\nfrom users import UserStore\nfrom roles import get_permissions, has_permission\nfrom middleware import AuthMiddleware\n\ndef test_admin_has_read():\n    perms = get_permissions(\"admin\")\n    assert \"read\" in perms, f\"Admin should have read, got: {perms}\"\n    print(\"  admin_has_read: PASSED\")\n\ndef test_admin_has_all():\n    for perm in [\"read\", \"write\", \"delete\", \"manage_users\"]:\n        assert has_permission(\"admin\", perm), f\"Admin missing '{perm}'\"\n    print(\"  admin_has_all: PASSED\")\n\ndef test_permission_isolation():\n    \"\"\"Getting permissions should not allow modifying role definitions.\"\"\"\n    perms = get_permissions(\"viewer\")\n    perms.append(\"delete\")\n    assert \"delete\" not in get_permissions(\"viewer\"), \"Permissions leaked via mutation\"\n    print(\"  permission_isolation: PASSED\")\n\ndef test_middleware_admin():\n    store = UserStore()\n    store.create_user(\"root\", role=\"admin\")\n    mw = AuthMiddleware(store)\n    for perm in [\"read\", \"write\", \"delete\"]:\n        r = mw.check_access(\"root\", perm)\n        assert r[\"allowed\"], f\"Admin should have {perm}: {r}\"\n    print(\"  middleware_admin: PASSED\")\n\ndef test_middleware_denied():\n    store = UserStore()\n    store.create_user(\"bob\", role=\"viewer\")\n    mw = AuthMiddleware(store)\n    assert not mw.check_access(\"bob\", \"write\")[\"allowed\"]\n    print(\"  middleware_denied: PASSED\")\n\ndef test_unknown_user():\n    store = UserStore()\n    mw = AuthMiddleware(store)\n    r = mw.check_access(\"nobody\", \"read\")\n    assert not r[\"allowed\"] and r[\"reason\"] == \"user_not_found\"\n    print(\"  unknown_user: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_admin_has_read\", \"test_admin_has_all\", \"test_permission_isolation\",\n                  \"test_middleware_admin\", \"test_middleware_denied\", \"test_unknown_user\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-22T15:14:11.156711+00:00",
+  "finished_at": "2026-03-22T15:16:58.670045+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 20,
+  "trials_b_count": 20
+}
