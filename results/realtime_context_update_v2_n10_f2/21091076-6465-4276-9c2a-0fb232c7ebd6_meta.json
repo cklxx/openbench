@@ -1,0 +1,55 @@
+{
+  "run_id": "21091076-6465-4276-9c2a-0fb232c7ebd6",
+  "experiment": {
+    "name": "realtime_context_update_v2_n10_f2",
+    "description": "Anti-recency needle: 10 timestamped updates, 2 fields. Ordered (latest=last) vs shuffled (latest at ~40% position).",
+    "diff": {
+      "field": "system_prompt",
+      "description": "chronological order vs out-of-order (latest in middle)"
+    },
+    "agent_a": {
+      "name": "ordered",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. You receive timestamped status updates that may arrive OUT OF ORDER due to network delays. Always report the values from the entry with the LATEST TIMESTAMP, regardless of its position in the list. Output only the requested values, one per line.\n\nStatus updates:\n[2024-03-21 10:00] cpu=48.1% memory=61.1%\n[2024-03-21 10:05] cpu=90.5% memory=45.4%\n[2024-03-21 10:10] cpu=50.3% memory=23.7%\n[2024-03-21 10:15] cpu=75.3% memory=65.6%\n[2024-03-21 10:20] cpu=77.2% memory=86.5%\n[2024-03-21 10:25] cpu=89.4% memory=61.5%\n[2024-03-21 10:30] cpu=31.6% memory=59.8%\n[2024-03-21 10:35] cpu=77.7% memory=72.2%\n[2024-03-21 10:40] cpu=58.8% memory=63.9%\n[2024-03-21 10:45] cpu=21.8% memory=63.4%",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "shuffled",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. You receive timestamped status updates that may arrive OUT OF ORDER due to network delays. Always report the values from the entry with the LATEST TIMESTAMP, regardless of its position in the list. Output only the requested values, one per line.\n\nStatus updates:\n[2024-03-21 10:00] cpu=48.1% memory=61.1%\n[2024-03-21 10:05] cpu=90.5% memory=45.4%\n[2024-03-21 10:10] cpu=50.3% memory=23.7%\n[2024-03-21 10:45] cpu=21.8% memory=63.4%\n[2024-03-21 10:15] cpu=75.3% memory=65.6%\n[2024-03-21 10:25] cpu=89.4% memory=61.5%\n[2024-03-21 10:20] cpu=77.2% memory=86.5%\n[2024-03-21 10:30] cpu=31.6% memory=59.8%\n[2024-03-21 10:35] cpu=77.7% memory=72.2%\n[2024-03-21 10:40] cpu=58.8% memory=63.9%",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "What are the values from the entry with the LATEST timestamp? Report: cpu, memory",
+        "expected": "cpu=21.8% | memory=63.4%",
+        "difficulty": "easy",
+        "tags": [
+          "10-updates",
+          "2-fields"
+        ],
+        "check_fn": "\"21.8%\" in output and \"63.4%\" in output"
+      }
+    ],
+    "tags": [
+      "anti-recency",
+      "out-of-order",
+      "research"
+    ],
+    "num_samples": 8,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-22T14:29:04.808684+00:00",
+  "finished_at": "2026-03-22T14:29:12.646331+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 8,
+  "trials_b_count": 8
+}

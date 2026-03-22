@@ -1,0 +1,55 @@
+{
+  "run_id": "a881127e-f89e-4325-be2c-5a78631085bd",
+  "experiment": {
+    "name": "realtime_context_update_v2_n50_f5",
+    "description": "Anti-recency needle: 50 timestamped updates, 5 fields. Ordered (latest=last) vs shuffled (latest at ~40% position).",
+    "diff": {
+      "field": "system_prompt",
+      "description": "chronological order vs out-of-order (latest in middle)"
+    },
+    "agent_a": {
+      "name": "ordered",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. You receive timestamped status updates that may arrive OUT OF ORDER due to network delays. Always report the values from the entry with the LATEST TIMESTAMP, regardless of its position in the list. Output only the requested values, one per line.\n\nStatus updates:\n[2024-03-21 10:00] cpu=15.5% memory=23.5% requests=2213 errors=5 latency_ms=225\n[2024-03-21 10:05] cpu=52.1% memory=81.2% requests=5489 errors=45 latency_ms=338\n[2024-03-21 10:10] cpu=13.8% memory=82.2% requests=9130 errors=31 latency_ms=390\n[2024-03-21 10:15] cpu=81.4% memory=35.1% requests=6543 errors=6 latency_ms=47\n[2024-03-21 10:20] cpu=55.4% memory=49.1% requests=6027 errors=45 latency_ms=320\n[2024-03-21 10:25] cpu=73.6% memory=70.7% requests=8832 errors=9 latency_ms=397\n[2024-03-21 10:30] cpu=71.3% memory=86.7% requests=6112 errors=6 latency_ms=288\n[2024-03-21 10:35] cpu=19.6% memory=54.2% requests=8818 errors=13 latency_ms=10\n[2024-03-21 10:40] cpu=63.8% memory=40.4% requests=6484 errors=14 latency_ms=311\n[2024-03-21 10:45] cpu=91.6% memory=79.1% requests=5950 errors=11 latency_ms=7\n[2024-03-21 10:50] cpu=17.0% memory=29.9% requests=2753 errors=5 latency_ms=29\n[2024-03-21 10:55] cpu=76.9% memory=48.4% requests=5396 errors=16 latency_ms=168\n[2024-03-21 11:00] cpu=73.4% memory=76.9% requests=4211 errors=12 latency_ms=174\n[2024-03-21 11:05] cpu=15.4% memory=36.0% requests=1122 errors=30 latency_ms=407\n[2024-03-21 11:10] cpu=38.1% memory=61.9% requests=5071 errors=19 latency_ms=275\n[2024-03-21 11:15] cpu=29.6% memory=86.8% requests=2763 errors=26 latency_ms=365\n[2024-03-21 11:20] cpu=55.8% memory=73.6% requests=4176 errors=29 latency_ms=448\n[2024-03-21 11:25] cpu=16.4% memory=51.5% requests=9176 errors=39 latency_ms=425\n[2024-03-21 11:30] cpu=87.4% memory=79.3% requests=7481 errors=47 latency_ms=235\n[2024-03-21 11:35] cpu=64.1% memory=75.5% requests=7474 errors=4 latency_ms=168\n[2024-03-21 11:40] cpu=59.3% memory=22.7% requests=7050 errors=8 latency_ms=272\n[2024-03-21 11:45] cpu=16.8% memory=44.7% requests=9298 errors=42 latency_ms=287\n[2024-03-21 11:50] cpu=29.9% memory=48.3% requests=6305 errors=44 latency_ms=440\n[2024-03-21 11:55] cpu=28.3% memory=50.7% requests=7987 errors=49 latency_ms=73\n[2024-03-21 12:00] cpu=88.9% memory=54.3% requests=1516 errors=7 latency_ms=89\n[2024-03-21 12:05] cpu=76.3% memory=37.7% requests=7124 errors=32 latency_ms=307\n[2024-03-21 12:10] cpu=40.5% memory=89.3% requests=6759 errors=10 latency_ms=271\n[2024-03-21 12:15] cpu=74.4% memory=69.9% requests=6694 errors=45 latency_ms=44\n[2024-03-21 12:20] cpu=90.8% memory=86.3% requests=2475 errors=26 latency_ms=97\n[2024-03-21 12:25] cpu=85.8% memory=36.5% requests=6393 errors=13 latency_ms=462\n[2024-03-21 12:30] cpu=47.7% memory=38.7% requests=6915 errors=30 latency_ms=335\n[2024-03-21 12:35] cpu=81.6% memory=76.7% requests=3243 errors=7 latency_ms=50\n[2024-03-21 12:40] cpu=83.8% memory=50.3% requests=1079 errors=36 latency_ms=5\n[2024-03-21 12:45] cpu=15.7% memory=81.6% requests=1900 errors=50 latency_ms=390\n[2024-03-21 12:50] cpu=11.8% memory=68.0% requests=5156 errors=37 latency_ms=226\n[2024-03-21 12:55] cpu=31.1% memory=49.1% requests=6512 errors=31 latency_ms=192\n[2024-03-21 13:00] cpu=16.3% memory=49.9% requests=9913 errors=40 latency_ms=278\n[2024-03-21 13:05] cpu=83.9% memory=64.8% requests=8812 errors=26 latency_ms=246\n[2024-03-21 13:10] cpu=84.8% memory=57.6% requests=3572 errors=14 latency_ms=10\n[2024-03-21 13:15] cpu=61.2% memory=63.8% requests=7631 errors=42 latency_ms=371\n[2024-03-21 13:20] cpu=13.2% memory=33.4% requests=2617 errors=36 latency_ms=216\n[2024-03-21 13:25] cpu=80.7% memory=81.3% requests=6876 errors=26 latency_ms=108\n[2024-03-21 13:30] cpu=51.8% memory=33.6% requests=3133 errors=41 latency_ms=291\n[2024-03-21 13:35] cpu=41.5% memory=24.7% requests=8767 errors=25 latency_ms=448\n[2024-03-21 13:40] cpu=19.7% memory=25.1% requests=4430 errors=37 latency_ms=152\n[2024-03-21 13:45] cpu=61.8% memory=82.8% requests=4131 errors=43 latency_ms=114\n[2024-03-21 13:50] cpu=27.3% memory=68.2% requests=4621 errors=50 latency_ms=372\n[2024-03-21 13:55] cpu=87.2% memory=84.1% requests=5718 errors=28 latency_ms=417\n[2024-03-21 14:00] cpu=48.0% memory=54.8% requests=4740 errors=39 latency_ms=181\n[2024-03-21 14:05] cpu=59.2% memory=81.7% requests=7053 errors=3 latency_ms=281",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "shuffled",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. You receive timestamped status updates that may arrive OUT OF ORDER due to network delays. Always report the values from the entry with the LATEST TIMESTAMP, regardless of its position in the list. Output only the requested values, one per line.\n\nStatus updates:\n[2024-03-21 10:00] cpu=15.5% memory=23.5% requests=2213 errors=5 latency_ms=225\n[2024-03-21 10:05] cpu=52.1% memory=81.2% requests=5489 errors=45 latency_ms=338\n[2024-03-21 10:10] cpu=13.8% memory=82.2% requests=9130 errors=31 latency_ms=390\n[2024-03-21 10:15] cpu=81.4% memory=35.1% requests=6543 errors=6 latency_ms=47\n[2024-03-21 10:20] cpu=55.4% memory=49.1% requests=6027 errors=45 latency_ms=320\n[2024-03-21 10:25] cpu=73.6% memory=70.7% requests=8832 errors=9 latency_ms=397\n[2024-03-21 10:30] cpu=71.3% memory=86.7% requests=6112 errors=6 latency_ms=288\n[2024-03-21 10:35] cpu=19.6% memory=54.2% requests=8818 errors=13 latency_ms=10\n[2024-03-21 10:40] cpu=63.8% memory=40.4% requests=6484 errors=14 latency_ms=311\n[2024-03-21 10:45] cpu=91.6% memory=79.1% requests=5950 errors=11 latency_ms=7\n[2024-03-21 10:50] cpu=17.0% memory=29.9% requests=2753 errors=5 latency_ms=29\n[2024-03-21 10:55] cpu=76.9% memory=48.4% requests=5396 errors=16 latency_ms=168\n[2024-03-21 11:00] cpu=73.4% memory=76.9% requests=4211 errors=12 latency_ms=174\n[2024-03-21 11:05] cpu=15.4% memory=36.0% requests=1122 errors=30 latency_ms=407\n[2024-03-21 11:10] cpu=38.1% memory=61.9% requests=5071 errors=19 latency_ms=275\n[2024-03-21 11:15] cpu=29.6% memory=86.8% requests=2763 errors=26 latency_ms=365\n[2024-03-21 11:20] cpu=55.8% memory=73.6% requests=4176 errors=29 latency_ms=448\n[2024-03-21 11:25] cpu=16.4% memory=51.5% requests=9176 errors=39 latency_ms=425\n[2024-03-21 11:30] cpu=87.4% memory=79.3% requests=7481 errors=47 latency_ms=235\n[2024-03-21 14:05] cpu=59.2% memory=81.7% requests=7053 errors=3 latency_ms=281\n[2024-03-21 11:35] cpu=64.1% memory=75.5% requests=7474 errors=4 latency_ms=168\n[2024-03-21 11:40] cpu=59.3% memory=22.7% requests=7050 errors=8 latency_ms=272\n[2024-03-21 11:45] cpu=16.8% memory=44.7% requests=9298 errors=42 latency_ms=287\n[2024-03-21 11:50] cpu=29.9% memory=48.3% requests=6305 errors=44 latency_ms=440\n[2024-03-21 11:55] cpu=28.3% memory=50.7% requests=7987 errors=49 latency_ms=73\n[2024-03-21 12:00] cpu=88.9% memory=54.3% requests=1516 errors=7 latency_ms=89\n[2024-03-21 12:05] cpu=76.3% memory=37.7% requests=7124 errors=32 latency_ms=307\n[2024-03-21 12:10] cpu=40.5% memory=89.3% requests=6759 errors=10 latency_ms=271\n[2024-03-21 12:15] cpu=74.4% memory=69.9% requests=6694 errors=45 latency_ms=44\n[2024-03-21 12:20] cpu=90.8% memory=86.3% requests=2475 errors=26 latency_ms=97\n[2024-03-21 12:25] cpu=85.8% memory=36.5% requests=6393 errors=13 latency_ms=462\n[2024-03-21 12:30] cpu=47.7% memory=38.7% requests=6915 errors=30 latency_ms=335\n[2024-03-21 12:35] cpu=81.6% memory=76.7% requests=3243 errors=7 latency_ms=50\n[2024-03-21 12:40] cpu=83.8% memory=50.3% requests=1079 errors=36 latency_ms=5\n[2024-03-21 12:45] cpu=15.7% memory=81.6% requests=1900 errors=50 latency_ms=390\n[2024-03-21 12:50] cpu=11.8% memory=68.0% requests=5156 errors=37 latency_ms=226\n[2024-03-21 12:55] cpu=31.1% memory=49.1% requests=6512 errors=31 latency_ms=192\n[2024-03-21 13:00] cpu=16.3% memory=49.9% requests=9913 errors=40 latency_ms=278\n[2024-03-21 13:05] cpu=83.9% memory=64.8% requests=8812 errors=26 latency_ms=246\n[2024-03-21 13:10] cpu=84.8% memory=57.6% requests=3572 errors=14 latency_ms=10\n[2024-03-21 13:20] cpu=13.2% memory=33.4% requests=2617 errors=36 latency_ms=216\n[2024-03-21 13:15] cpu=61.2% memory=63.8% requests=7631 errors=42 latency_ms=371\n[2024-03-21 13:25] cpu=80.7% memory=81.3% requests=6876 errors=26 latency_ms=108\n[2024-03-21 13:30] cpu=51.8% memory=33.6% requests=3133 errors=41 latency_ms=291\n[2024-03-21 13:35] cpu=41.5% memory=24.7% requests=8767 errors=25 latency_ms=448\n[2024-03-21 13:40] cpu=19.7% memory=25.1% requests=4430 errors=37 latency_ms=152\n[2024-03-21 13:45] cpu=61.8% memory=82.8% requests=4131 errors=43 latency_ms=114\n[2024-03-21 13:50] cpu=27.3% memory=68.2% requests=4621 errors=50 latency_ms=372\n[2024-03-21 13:55] cpu=87.2% memory=84.1% requests=5718 errors=28 latency_ms=417\n[2024-03-21 14:00] cpu=48.0% memory=54.8% requests=4740 errors=39 latency_ms=181",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "What are the values from the entry with the LATEST timestamp? Report: cpu, memory, requests, errors, latency_ms",
+        "expected": "cpu=59.2% | memory=81.7% | requests=7053 | errors=3 | latency_ms=281",
+        "difficulty": "hard",
+        "tags": [
+          "50-updates",
+          "5-fields"
+        ],
+        "check_fn": "\"59.2%\" in output and \"81.7%\" in output and \"7053\" in output and \"3\" in output and \"281\" in output"
+      }
+    ],
+    "tags": [
+      "anti-recency",
+      "out-of-order",
+      "research"
+    ],
+    "num_samples": 8,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-22T14:29:35.236626+00:00",
+  "finished_at": "2026-03-22T14:29:54.385959+00:00",
+  "num_tasks": 1,
+  "trials_a_count": 8,
+  "trials_b_count": 8
+}

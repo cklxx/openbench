@@ -1,0 +1,80 @@
+{
+  "run_id": "14ba0e48-2e1d-43b1-ab50-9d64e8b8e790",
+  "experiment": {
+    "name": "realtime_context_update_v3__key_value_vs_indexed",
+    "description": "Compare 4 serialization formats (key_value, indexed, json_lines, toon) for status update recognition. Same data, different encoding. Measures accuracy AND token efficiency.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "key_value vs indexed"
+    },
+    "agent_a": {
+      "name": "key_value",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. Read the status updates below and answer questions about the CURRENT (latest) state. Be precise — output only the requested values, one per line.\n\n--- TASK 1 ---\ncpu: 64.3% | memory: 40.4% | requests: 4218\ncpu: 36.5% | memory: 51.1% | requests: 7529\ncpu: 33.8% | memory: 44.6% | requests: 1057\ncpu: 65.0% | memory: 37.0% | requests: 2020\ncpu: 22.0% | memory: 39.8% | requests: 7324\ncpu: 67.4% | memory: 67.4% | requests: 8442\ncpu: 47.6% | memory: 85.0% | requests: 1811\ncpu: 28.7% | memory: 53.3% | requests: 1049\ncpu: 56.4% | memory: 86.5% | requests: 3651\ncpu: 28.2% | memory: 83.7% | requests: 6327\n\n--- TASK 2 ---\ncpu: 51.6% | memory: 74.9% | requests: 8348 | errors: 27\ncpu: 79.7% | memory: 49.5% | requests: 6324 | errors: 23\ncpu: 24.3% | memory: 81.3% | requests: 3960 | errors: 3\ncpu: 52.5% | memory: 55.4% | requests: 1062 | errors: 34\ncpu: 87.9% | memory: 30.6% | requests: 2582 | errors: 4\ncpu: 64.4% | memory: 45.6% | requests: 6912 | errors: 22\ncpu: 35.8% | memory: 89.7% | requests: 1623 | errors: 39\ncpu: 13.4% | memory: 61.2% | requests: 3994 | errors: 45\ncpu: 54.0% | memory: 34.0% | requests: 8963 | errors: 30\ncpu: 61.9% | memory: 79.1% | requests: 4065 | errors: 31\ncpu: 85.5% | memory: 40.3% | requests: 4449 | errors: 48\ncpu: 59.9% | memory: 51.4% | requests: 4048 | errors: 44\ncpu: 48.3% | memory: 45.6% | requests: 8615 | errors: 20\ncpu: 64.8% | memory: 21.4% | requests: 9795 | errors: 17\ncpu: 48.6% | memory: 81.7% | requests: 8713 | errors: 10\ncpu: 45.2% | memory: 54.0% | requests: 9168 | errors: 6\ncpu: 22.1% | memory: 45.7% | requests: 8463 | errors: 43\ncpu: 92.8% | memory: 64.3% | requests: 8991 | errors: 28\ncpu: 61.0% | memory: 50.1% | requests: 4455 | errors: 4\ncpu: 11.0% | memory: 60.0% | requests: 9795 | errors: 22\ncpu: 89.3% | memory: 60.3% | requests: 3337 | errors: 45\ncpu: 92.9% | memory: 47.3% | requests: 4598 | errors: 35\ncpu: 37.2% | memory: 58.2% | requests: 7918 | errors: 29\ncpu: 88.1% | memory: 72.2% | requests: 3420 | errors: 24\ncpu: 10.6% | memory: 82.3% | requests: 9389 | errors: 19\ncpu: 20.4% | memory: 80.2% | requests: 8591 | errors: 33\ncpu: 77.7% | memory: 36.6% | requests: 9981 | errors: 33\ncpu: 39.5% | memory: 45.2% | requests: 2643 | errors: 19\ncpu: 45.0% | memory: 52.5% | requests: 6334 | errors: 33\ncpu: 69.7% | memory: 31.0% | requests: 9641 | errors: 42\n\n--- TASK 3 ---\ncpu: 58.0% | memory: 63.2% | requests: 6738 | errors: 33 | latency_ms: 68\ncpu: 62.2% | memory: 37.7% | requests: 4067 | errors: 13 | latency_ms: 24\ncpu: 23.6% | memory: 40.1% | requests: 8028 | errors: 38 | latency_ms: 451\ncpu: 41.8% | memory: 87.9% | requests: 6574 | errors: 33 | latency_ms: 224\ncpu: 46.5% | memory: 79.1% | requests: 7370 | errors: 6 | latency_ms: 488\ncpu: 11.5% | memory: 77.6% | requests: 1728 | errors: 48 | latency_ms: 457\ncpu: 93.3% | memory: 71.0% | requests: 9516 | errors: 42 | latency_ms: 472\ncpu: 82.4% | memory: 40.9% | requests: 9340 | errors: 40 | latency_ms: 133\ncpu: 56.1% | memory: 88.2% | requests: 6732 | errors: 19 | latency_ms: 500\ncpu: 29.0% | memory: 55.1% | requests: 1170 | errors: 15 | latency_ms: 180\ncpu: 90.3% | memory: 61.1% | requests: 9181 | errors: 41 | latency_ms: 498\ncpu: 40.4% | memory: 50.0% | requests: 7251 | errors: 7 | latency_ms: 26\ncpu: 42.6% | memory: 47.2% | requests: 4846 | errors: 30 | latency_ms: 157\ncpu: 59.6% | memory: 62.1% | requests: 1486 | errors: 32 | latency_ms: 336\ncpu: 57.5% | memory: 47.5% | requests: 5890 | errors: 34 | latency_ms: 498\ncpu: 12.2% | memory: 88.6% | requests: 3928 | errors: 38 | latency_ms: 172\ncpu: 85.3% | memory: 26.6% | requests: 1390 | errors: 49 | latency_ms: 202\ncpu: 72.4% | memory: 72.1% | requests: 7496 | errors: 22 | latency_ms: 30\ncpu: 67.2% | memory: 66.2% | requests: 5118 | errors: 48 | latency_ms: 498\ncpu: 72.3% | memory: 38.9% | requests: 2255 | errors: 23 | latency_ms: 141\ncpu: 49.5% | memory: 26.8% | requests: 2800 | errors: 7 | latency_ms: 465\ncpu: 42.8% | memory: 55.6% | requests: 5804 | errors: 44 | latency_ms: 456\ncpu: 24.0% | memory: 40.8% | requests: 8658 | errors: 15 | latency_ms: 269\ncpu: 12.1% | memory: 69.2% | requests: 5887 | errors: 45 | latency_ms: 471\ncpu: 41.1% | memory: 59.3% | requests: 3947 | errors: 37 | latency_ms: 85\ncpu: 67.9% | memory: 32.0% | requests: 9901 | errors: 20 | latency_ms: 444\ncpu: 26.6% | memory: 61.8% | requests: 3025 | errors: 41 | latency_ms: 68\ncpu: 55.1% | memory: 75.7% | requests: 8998 | errors: 35 | latency_ms: 99\ncpu: 69.4% | memory: 51.0% | requests: 9511 | errors: 50 | latency_ms: 233\ncpu: 76.2% | memory: 47.0% | requests: 3463 | errors: 19 | latency_ms: 62\ncpu: 20.3% | memory: 40.0% | requests: 8728 | errors: 11 | latency_ms: 237\ncpu: 51.4% | memory: 20.5% | requests: 1135 | errors: 1 | latency_ms: 205\ncpu: 79.4% | memory: 71.5% | requests: 7995 | errors: 28 | latency_ms: 243\ncpu: 13.9% | memory: 45.2% | requests: 5566 | errors: 40 | latency_ms: 88\ncpu: 29.6% | memory: 24.8% | requests: 8599 | errors: 17 | latency_ms: 177\ncpu: 27.1% | memory: 87.9% | requests: 2255 | errors: 14 | latency_ms: 283\ncpu: 61.2% | memory: 29.8% | requests: 2668 | errors: 38 | latency_ms: 353\ncpu: 84.5% | memory: 73.6% | requests: 6837 | errors: 12 | latency_ms: 99\ncpu: 49.1% | memory: 39.2% | requests: 6567 | errors: 0 | latency_ms: 235\ncpu: 70.9% | memory: 51.5% | requests: 4238 | errors: 27 | latency_ms: 34\ncpu: 36.2% | memory: 76.4% | requests: 2861 | errors: 44 | latency_ms: 200\ncpu: 30.8% | memory: 29.5% | requests: 2818 | errors: 32 | latency_ms: 121\ncpu: 33.9% | memory: 27.0% | requests: 7422 | errors: 41 | latency_ms: 268\ncpu: 67.2% | memory: 21.3% | requests: 8121 | errors: 2 | latency_ms: 223\ncpu: 81.1% | memory: 28.0% | requests: 2357 | errors: 29 | latency_ms: 445\ncpu: 36.1% | memory: 36.8% | requests: 7744 | errors: 36 | latency_ms: 345\ncpu: 31.9% | memory: 49.1% | requests: 9791 | errors: 45 | latency_ms: 319\ncpu: 87.2% | memory: 34.8% | requests: 2357 | errors: 49 | latency_ms: 151\ncpu: 62.0% | memory: 31.1% | requests: 4724 | errors: 6 | latency_ms: 86\ncpu: 18.5% | memory: 81.7% | requests: 9813 | errors: 13 | latency_ms: 11",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "indexed",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. Read the status updates below and answer questions about the CURRENT (latest) state. Be precise — output only the requested values, one per line.\n\n--- TASK 1 ---\n[1] cpu=64.3% memory=40.4% requests=4218\n[2] cpu=36.5% memory=51.1% requests=7529\n[3] cpu=33.8% memory=44.6% requests=1057\n[4] cpu=65.0% memory=37.0% requests=2020\n[5] cpu=22.0% memory=39.8% requests=7324\n[6] cpu=67.4% memory=67.4% requests=8442\n[7] cpu=47.6% memory=85.0% requests=1811\n[8] cpu=28.7% memory=53.3% requests=1049\n[9] cpu=56.4% memory=86.5% requests=3651\n[10] cpu=28.2% memory=83.7% requests=6327\n\n--- TASK 2 ---\n[1] cpu=51.6% memory=74.9% requests=8348 errors=27\n[2] cpu=79.7% memory=49.5% requests=6324 errors=23\n[3] cpu=24.3% memory=81.3% requests=3960 errors=3\n[4] cpu=52.5% memory=55.4% requests=1062 errors=34\n[5] cpu=87.9% memory=30.6% requests=2582 errors=4\n[6] cpu=64.4% memory=45.6% requests=6912 errors=22\n[7] cpu=35.8% memory=89.7% requests=1623 errors=39\n[8] cpu=13.4% memory=61.2% requests=3994 errors=45\n[9] cpu=54.0% memory=34.0% requests=8963 errors=30\n[10] cpu=61.9% memory=79.1% requests=4065 errors=31\n[11] cpu=85.5% memory=40.3% requests=4449 errors=48\n[12] cpu=59.9% memory=51.4% requests=4048 errors=44\n[13] cpu=48.3% memory=45.6% requests=8615 errors=20\n[14] cpu=64.8% memory=21.4% requests=9795 errors=17\n[15] cpu=48.6% memory=81.7% requests=8713 errors=10\n[16] cpu=45.2% memory=54.0% requests=9168 errors=6\n[17] cpu=22.1% memory=45.7% requests=8463 errors=43\n[18] cpu=92.8% memory=64.3% requests=8991 errors=28\n[19] cpu=61.0% memory=50.1% requests=4455 errors=4\n[20] cpu=11.0% memory=60.0% requests=9795 errors=22\n[21] cpu=89.3% memory=60.3% requests=3337 errors=45\n[22] cpu=92.9% memory=47.3% requests=4598 errors=35\n[23] cpu=37.2% memory=58.2% requests=7918 errors=29\n[24] cpu=88.1% memory=72.2% requests=3420 errors=24\n[25] cpu=10.6% memory=82.3% requests=9389 errors=19\n[26] cpu=20.4% memory=80.2% requests=8591 errors=33\n[27] cpu=77.7% memory=36.6% requests=9981 errors=33\n[28] cpu=39.5% memory=45.2% requests=2643 errors=19\n[29] cpu=45.0% memory=52.5% requests=6334 errors=33\n[30] cpu=69.7% memory=31.0% requests=9641 errors=42\n\n--- TASK 3 ---\n[1] cpu=58.0% memory=63.2% requests=6738 errors=33 latency_ms=68\n[2] cpu=62.2% memory=37.7% requests=4067 errors=13 latency_ms=24\n[3] cpu=23.6% memory=40.1% requests=8028 errors=38 latency_ms=451\n[4] cpu=41.8% memory=87.9% requests=6574 errors=33 latency_ms=224\n[5] cpu=46.5% memory=79.1% requests=7370 errors=6 latency_ms=488\n[6] cpu=11.5% memory=77.6% requests=1728 errors=48 latency_ms=457\n[7] cpu=93.3% memory=71.0% requests=9516 errors=42 latency_ms=472\n[8] cpu=82.4% memory=40.9% requests=9340 errors=40 latency_ms=133\n[9] cpu=56.1% memory=88.2% requests=6732 errors=19 latency_ms=500\n[10] cpu=29.0% memory=55.1% requests=1170 errors=15 latency_ms=180\n[11] cpu=90.3% memory=61.1% requests=9181 errors=41 latency_ms=498\n[12] cpu=40.4% memory=50.0% requests=7251 errors=7 latency_ms=26\n[13] cpu=42.6% memory=47.2% requests=4846 errors=30 latency_ms=157\n[14] cpu=59.6% memory=62.1% requests=1486 errors=32 latency_ms=336\n[15] cpu=57.5% memory=47.5% requests=5890 errors=34 latency_ms=498\n[16] cpu=12.2% memory=88.6% requests=3928 errors=38 latency_ms=172\n[17] cpu=85.3% memory=26.6% requests=1390 errors=49 latency_ms=202\n[18] cpu=72.4% memory=72.1% requests=7496 errors=22 latency_ms=30\n[19] cpu=67.2% memory=66.2% requests=5118 errors=48 latency_ms=498\n[20] cpu=72.3% memory=38.9% requests=2255 errors=23 latency_ms=141\n[21] cpu=49.5% memory=26.8% requests=2800 errors=7 latency_ms=465\n[22] cpu=42.8% memory=55.6% requests=5804 errors=44 latency_ms=456\n[23] cpu=24.0% memory=40.8% requests=8658 errors=15 latency_ms=269\n[24] cpu=12.1% memory=69.2% requests=5887 errors=45 latency_ms=471\n[25] cpu=41.1% memory=59.3% requests=3947 errors=37 latency_ms=85\n[26] cpu=67.9% memory=32.0% requests=9901 errors=20 latency_ms=444\n[27] cpu=26.6% memory=61.8% requests=3025 errors=41 latency_ms=68\n[28] cpu=55.1% memory=75.7% requests=8998 errors=35 latency_ms=99\n[29] cpu=69.4% memory=51.0% requests=9511 errors=50 latency_ms=233\n[30] cpu=76.2% memory=47.0% requests=3463 errors=19 latency_ms=62\n[31] cpu=20.3% memory=40.0% requests=8728 errors=11 latency_ms=237\n[32] cpu=51.4% memory=20.5% requests=1135 errors=1 latency_ms=205\n[33] cpu=79.4% memory=71.5% requests=7995 errors=28 latency_ms=243\n[34] cpu=13.9% memory=45.2% requests=5566 errors=40 latency_ms=88\n[35] cpu=29.6% memory=24.8% requests=8599 errors=17 latency_ms=177\n[36] cpu=27.1% memory=87.9% requests=2255 errors=14 latency_ms=283\n[37] cpu=61.2% memory=29.8% requests=2668 errors=38 latency_ms=353\n[38] cpu=84.5% memory=73.6% requests=6837 errors=12 latency_ms=99\n[39] cpu=49.1% memory=39.2% requests=6567 errors=0 latency_ms=235\n[40] cpu=70.9% memory=51.5% requests=4238 errors=27 latency_ms=34\n[41] cpu=36.2% memory=76.4% requests=2861 errors=44 latency_ms=200\n[42] cpu=30.8% memory=29.5% requests=2818 errors=32 latency_ms=121\n[43] cpu=33.9% memory=27.0% requests=7422 errors=41 latency_ms=268\n[44] cpu=67.2% memory=21.3% requests=8121 errors=2 latency_ms=223\n[45] cpu=81.1% memory=28.0% requests=2357 errors=29 latency_ms=445\n[46] cpu=36.1% memory=36.8% requests=7744 errors=36 latency_ms=345\n[47] cpu=31.9% memory=49.1% requests=9791 errors=45 latency_ms=319\n[48] cpu=87.2% memory=34.8% requests=2357 errors=49 latency_ms=151\n[49] cpu=62.0% memory=31.1% requests=4724 errors=6 latency_ms=86\n[50] cpu=18.5% memory=81.7% requests=9813 errors=13 latency_ms=11",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Look at TASK 1. What are the current (latest) values of: cpu, memory, requests?",
+        "expected": "cpu=28.2% | memory=83.7% | requests=6327",
+        "difficulty": "easy",
+        "tags": [
+          "10-updates",
+          "3-fields"
+        ],
+        "check_fn": "\"28.2%\" in output and \"83.7%\" in output and \"6327\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Look at TASK 2. What are the current (latest) values of: cpu, memory, requests, errors?",
+        "expected": "cpu=69.7% | memory=31.0% | requests=9641 | errors=42",
+        "difficulty": "medium",
+        "tags": [
+          "30-updates",
+          "4-fields"
+        ],
+        "check_fn": "\"69.7%\" in output and \"31.0%\" in output and \"9641\" in output and \"42\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Look at TASK 3. What are the current (latest) values of: cpu, memory, requests, errors, latency_ms?",
+        "expected": "cpu=18.5% | memory=81.7% | requests=9813 | errors=13 | latency_ms=11",
+        "difficulty": "hard",
+        "tags": [
+          "50-updates",
+          "5-fields"
+        ],
+        "check_fn": "\"18.5%\" in output and \"81.7%\" in output and \"9813\" in output and \"13\" in output and \"11\" in output"
+      }
+    ],
+    "tags": [
+      "format-comparison",
+      "token-efficiency",
+      "toon",
+      "research",
+      "tournament",
+      "realtime_context_update_v3"
+    ],
+    "num_samples": 8,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-22T14:30:24.602711+00:00",
+  "finished_at": "2026-03-22T14:31:03.104326+00:00",
+  "num_tasks": 3,
+  "trials_a_count": 24,
+  "trials_b_count": 24
+}
