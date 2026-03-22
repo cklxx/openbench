@@ -1,0 +1,111 @@
+{
+  "run_id": "2ba70ed3-5249-4635-9a39-ba44f2899894",
+  "experiment": {
+    "name": "self_correction_v2",
+    "description": "Deceptive bugs where the obvious fix is WRONG. Pivot should win by reverting wrong fixes and finding the real bug. 4 tasks × 5 samples.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Pivot (revert wrong fix, fresh analysis) vs refine (build on wrong fix)"
+    },
+    "agent_a": {
+      "name": "pivot",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\nPHASE 1 — First attempt:\n1. Read the source file\n2. Read the test file\n3. Identify all bugs\n4. Fix all bugs in one pass\n5. Run the test\n\nPHASE 2 — If any test still fails:\n6. REVERT all your changes: run `git checkout -- .` to restore original files\n7. Re-read the test output from step 5 carefully\n8. Re-read the source file with fresh eyes — your first diagnosis was WRONG\n9. Find the REAL bug (not what you thought before)\n10. Fix it correctly\n11. Run the test again\n\nCRITICAL CONSTRAINTS:\n- After a failed test, you are FORBIDDEN from making incremental edits\n- You MUST run `git checkout -- .` before your second attempt\n- You MUST re-read the source file after reverting\n- Your first fix was WRONG — you need a completely different analysis\n- \"Revert everything, rethink everything\"\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "refine",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\nPHASE 1 — First attempt:\n1. Read the source file\n2. Read the test file\n3. Identify all bugs\n4. Fix all bugs in one pass\n5. Run the test\n\nPHASE 2 — If any test still fails:\n6. Do NOT revert your changes — your existing fix may be partially right\n7. Read ONLY the new test output to identify remaining failures\n8. Make MINIMAL additional edits to fix the remaining tests\n9. Run the test again\n\nCRITICAL CONSTRAINTS:\n- After a failed test, you are FORBIDDEN from reverting previous changes\n- You are FORBIDDEN from running `git checkout` or `git restore`\n- You are FORBIDDEN from re-reading the source file — use only the test output\n- Build on your existing fix — adjust, don't restart\n- \"Keep what works, fix what's still broken\"\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t1/scores.py. Run: cd tasks/t1 && python test_scores.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "deceptive",
+          "swapped-args"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t2/merge.py. Run: cd tasks/t2 && python test_merge.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "deceptive",
+          "swapped-indices"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t3/config_parser.py. Run: cd tasks/t3 && python test_config.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "deceptive",
+          "swapped-kv"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t4/formatter.py. Run: cd tasks/t4 && python test_formatter.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "deceptive",
+          "swapped-format-args"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "self-correction",
+      "deceptive-bugs",
+      "pivot-favored"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/scores.py": "def normalize(value, min_val, max_val):\n    \"\"\"Normalize value to 0.0-1.0 range.\"\"\"\n    if max_val == min_val:\n        return 0.0\n    return (value - min_val) / (max_val - min_val)\n\ndef scale_scores(scores, target_min=0, target_max=100):\n    \"\"\"Scale scores to target range using min-max normalization.\"\"\"\n    if not scores:\n        return []\n    src_min = min(scores)\n    src_max = max(scores)\n    if src_min == src_max:\n        mid = (target_min + target_max) / 2\n        return [round(mid, 1)] * len(scores)\n    return [\n        round(normalize(s, src_max, src_min) * (target_max - target_min) + target_min, 1)\n        for s in scores\n    ]\n",
+      "tasks/t1/test_scores.py": "from scores import scale_scores\n\ndef test_basic_scale():\n    \"\"\"Scale [0, 50, 100] to 0-100 should preserve values.\"\"\"\n    result = scale_scores([0, 50, 100])\n    assert result == [0.0, 50.0, 100.0], f\"Expected [0, 50, 100], got {result}\"\n    print(\"  basic_scale: PASSED\")\n\ndef test_custom_range():\n    \"\"\"Scale to 10-20 range.\"\"\"\n    result = scale_scores([0, 50, 100], target_min=10, target_max=20)\n    assert result == [10.0, 15.0, 20.0], f\"Expected [10, 15, 20], got {result}\"\n    print(\"  custom_range: PASSED\")\n\ndef test_uneven_input():\n    \"\"\"Non-uniform input distribution.\"\"\"\n    result = scale_scores([20, 60, 80], target_min=0, target_max=100)\n    # (20-20)/(80-20)=0, (60-20)/(80-20)=0.667, (80-20)/(80-20)=1\n    assert result[0] == 0.0, f\"Min should map to 0, got {result[0]}\"\n    assert result[2] == 100.0, f\"Max should map to 100, got {result[2]}\"\n    assert 60 < result[1] < 70, f\"Middle should be ~66.7, got {result[1]}\"\n    print(\"  uneven_input: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_scale\", \"test_custom_range\", \"test_uneven_input\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/merge.py": "def merge_sorted(a, b):\n    \"\"\"Merge two sorted lists into one sorted list (preserving duplicates).\"\"\"\n    result = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        if a[i] <= b[j]:\n            result.append(a[i])\n            i += 1\n        else:\n            result.append(b[j])\n            j += 1\n    result.extend(a[j:])\n    result.extend(b[i:])\n    return result\n",
+      "tasks/t2/test_merge.py": "from merge import merge_sorted\n\ndef test_basic_merge():\n    result = merge_sorted([1, 3], [2, 4])\n    assert result == [1, 2, 3, 4], f\"Expected [1, 2, 3, 4], got {result}\"\n    print(\"  basic_merge: PASSED\")\n\ndef test_with_duplicates():\n    \"\"\"Legitimate duplicates must be preserved.\"\"\"\n    result = merge_sorted([1, 1, 3], [1, 2, 3])\n    assert result == [1, 1, 1, 2, 3, 3], f\"Expected [1, 1, 1, 2, 3, 3], got {result}\"\n    print(\"  with_duplicates: PASSED\")\n\ndef test_uneven_lengths():\n    result = merge_sorted([1], [2, 3, 4, 5])\n    assert result == [1, 2, 3, 4, 5], f\"Expected [1, 2, 3, 4, 5], got {result}\"\n    print(\"  uneven_lengths: PASSED\")\n\ndef test_empty():\n    assert merge_sorted([], [1, 2]) == [1, 2]\n    assert merge_sorted([3, 4], []) == [3, 4]\n    assert merge_sorted([], []) == []\n    print(\"  empty: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_merge\", \"test_with_duplicates\", \"test_uneven_lengths\", \"test_empty\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/config_parser.py": "def parse_config(text):\n    \"\"\"Parse 'key = value' config text into a dict.\n\n    Lines starting with # are comments. Empty lines are skipped.\n    Keys and values are stripped of whitespace.\n    \"\"\"\n    config = {}\n    for line in text.strip().split(\"\\n\"):\n        line = line.strip()\n        if not line or line.startswith(\"#\"):\n            continue\n        if \"=\" not in line:\n            continue\n        key, value = line.split(\"=\", 1)\n        config[value.strip()] = key.strip()  # Bug: key/value swapped\n    return config\n\ndef get_config_value(text, key, default=None):\n    \"\"\"Parse config and return a specific key's value.\"\"\"\n    config = parse_config(text)\n    return config.get(key, default)\n",
+      "tasks/t3/test_config.py": "from config_parser import parse_config, get_config_value\n\nSAMPLE_CONFIG = \"\"\"\n# Database settings\nhost = localhost\nport = 5432\ndatabase = myapp\n\n# App settings\ndebug = true\nworkers = 4\n\"\"\"\n\ndef test_parse_basic():\n    config = parse_config(SAMPLE_CONFIG)\n    assert config.get(\"host\") == \"localhost\", f\"host: {config.get('host')}, config: {config}\"\n    assert config.get(\"port\") == \"5432\", f\"port: {config.get('port')}\"\n    print(\"  parse_basic: PASSED\")\n\ndef test_parse_all_keys():\n    config = parse_config(SAMPLE_CONFIG)\n    expected_keys = {\"host\", \"port\", \"database\", \"debug\", \"workers\"}\n    assert set(config.keys()) == expected_keys, f\"Keys: {set(config.keys())}\"\n    print(\"  parse_all_keys: PASSED\")\n\ndef test_get_value():\n    val = get_config_value(SAMPLE_CONFIG, \"database\")\n    assert val == \"myapp\", f\"Expected 'myapp', got '{val}'\"\n    print(\"  get_value: PASSED\")\n\ndef test_get_default():\n    val = get_config_value(SAMPLE_CONFIG, \"missing\", default=\"fallback\")\n    assert val == \"fallback\", f\"Expected 'fallback', got '{val}'\"\n    print(\"  get_default: PASSED\")\n\ndef test_comments_skipped():\n    config = parse_config(\"# comment\\nkey = val\")\n    assert len(config) == 1, f\"Comments should be skipped, got {config}\"\n    assert config.get(\"key\") == \"val\"\n    print(\"  comments_skipped: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_parse_basic\", \"test_parse_all_keys\", \"test_get_value\",\n                  \"test_get_default\", \"test_comments_skipped\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/formatter.py": "def format_row(name, value, template=\"{}: {}\"):\n    \"\"\"Format a single data row using template.\"\"\"\n    return template.format(value, name)  # Bug: args swapped\n\ndef format_table(data, template=\"{}: {}\"):\n    \"\"\"Format list of (name, value) pairs into a table string.\"\"\"\n    rows = []\n    for name, value in data:\n        rows.append(format_row(name, value, template))\n    return \"\\n\".join(rows)\n\ndef format_summary(data):\n    \"\"\"Create a summary with total.\"\"\"\n    table = format_table(data)\n    total = sum(v for _, v in data)\n    return f\"{table}\\nTotal: {total}\"\n",
+      "tasks/t4/test_formatter.py": "from formatter import format_row, format_table, format_summary\n\ndef test_format_row():\n    result = format_row(\"Alice\", 100)\n    assert result == \"Alice: 100\", f\"Expected 'Alice: 100', got '{result}'\"\n    print(\"  format_row: PASSED\")\n\ndef test_format_row_custom_template():\n    \"\"\"Custom template should work correctly.\"\"\"\n    result = format_row(\"Bob\", 200, template=\"{} scored {}\")\n    assert result == \"Bob scored 200\", f\"Expected 'Bob scored 200', got '{result}'\"\n    print(\"  format_row_template: PASSED\")\n\ndef test_format_table():\n    data = [(\"Alice\", 100), (\"Bob\", 200)]\n    result = format_table(data)\n    assert result == \"Alice: 100\\nBob: 200\", f\"Got '{result}'\"\n    print(\"  format_table: PASSED\")\n\ndef test_format_summary():\n    data = [(\"X\", 10), (\"Y\", 20)]\n    result = format_summary(data)\n    assert \"Total: 30\" in result\n    assert \"X: 10\" in result\n    print(\"  format_summary: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_format_row\", \"test_format_row_custom_template\",\n                  \"test_format_table\", \"test_format_summary\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": "cd tasks/t1 && git init -q && git add -A && git commit -q -m init && cd ../t2 && git init -q && git add -A && git commit -q -m init && cd ../t3 && git init -q && git add -A && git commit -q -m init && cd ../t4 && git init -q && git add -A && git commit -q -m init"
+  },
+  "started_at": "2026-03-22T16:54:56.729314+00:00",
+  "finished_at": "2026-03-22T16:56:53.637922+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 20,
+  "trials_b_count": 20
+}
