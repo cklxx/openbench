@@ -1,0 +1,98 @@
+{
+  "run_id": "897a9365-6e02-4c05-b750-7cfed0fde00d",
+  "experiment": {
+    "name": "realtime_context_update_v4__full_vs_summary_10",
+    "description": "Observation masking: how much history can we drop? 5 masking levels × 5 query types. Tests latest-value, peak, count, needle-in-haystack, and historical lookup.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "full vs summary_10"
+    },
+    "agent_a": {
+      "name": "full",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. Read the status updates below and answer questions precisely. When data is summarized or omitted, work with what you have — say 'unknown' if the answer requires data you don't have.\n\nStatus updates:\n[2024-03-21 10:00] cpu=44.9% memory=49.1% requests=7917\n[2024-03-21 10:05] cpu=45.5% memory=29.6% requests=8654\n[2024-03-21 10:10] cpu=49.4% memory=33.6% requests=2427\n[2024-03-21 10:15] cpu=90.4% memory=73.9% requests=1418\n[2024-03-21 10:20] cpu=53.1% memory=68.8% requests=4850\n[2024-03-21 10:25] cpu=65.9% memory=72.1% requests=1742\n[2024-03-21 10:30] cpu=36.8% memory=79.4% requests=2044\n[2024-03-21 10:35] cpu=66.6% memory=52.9% requests=5653\n[2024-03-21 10:40] cpu=40.9% memory=66.0% requests=8897\n[2024-03-21 10:45] cpu=38.9% memory=75.5% requests=1709\n[2024-03-21 10:50] cpu=37.3% memory=88.5% requests=9784\n[2024-03-21 10:55] cpu=20.0% memory=73.8% requests=5779\n[2024-03-21 11:00] cpu=61.9% memory=55.3% requests=3449\n[2024-03-21 11:05] cpu=66.5% memory=48.4% requests=5831\n[2024-03-21 11:10] cpu=39.6% memory=45.4% requests=1532 alert=disk_failure_sector_7742\n[2024-03-21 11:15] cpu=85.8% memory=87.0% requests=8767\n[2024-03-21 11:20] cpu=27.8% memory=28.0% requests=7431\n[2024-03-21 11:25] cpu=42.8% memory=28.4% requests=2762\n[2024-03-21 11:30] cpu=88.5% memory=54.3% requests=5121\n[2024-03-21 11:35] cpu=47.7% memory=25.5% requests=1334\n[2024-03-21 11:40] cpu=37.8% memory=65.0% requests=2415\n[2024-03-21 11:45] cpu=67.5% memory=62.0% requests=8236\n[2024-03-21 11:50] cpu=39.1% memory=86.8% requests=5074\n[2024-03-21 11:55] cpu=16.6% memory=83.1% requests=8752\n[2024-03-21 12:00] cpu=33.0% memory=31.5% requests=4357\n[2024-03-21 12:05] cpu=57.7% memory=22.3% requests=1243\n[2024-03-21 12:10] cpu=66.2% memory=35.0% requests=3978\n[2024-03-21 12:15] cpu=21.7% memory=78.6% requests=7566\n[2024-03-21 12:20] cpu=29.5% memory=20.2% requests=2248\n[2024-03-21 12:25] cpu=37.9% memory=44.3% requests=4014\n[2024-03-21 12:30] cpu=87.9% memory=21.1% requests=4467\n[2024-03-21 12:35] cpu=83.1% memory=24.9% requests=1276\n[2024-03-21 12:40] cpu=35.2% memory=21.6% requests=8721\n[2024-03-21 12:45] cpu=41.2% memory=34.8% requests=7366\n[2024-03-21 12:50] cpu=61.9% memory=85.3% requests=5193\n[2024-03-21 12:55] cpu=45.0% memory=61.9% requests=7911\n[2024-03-21 13:00] cpu=45.8% memory=74.6% requests=1237\n[2024-03-21 13:05] cpu=23.3% memory=36.4% requests=5500\n[2024-03-21 13:10] cpu=27.8% memory=65.4% requests=8074\n[2024-03-21 13:15] cpu=80.7% memory=31.8% requests=9440\n[2024-03-21 13:20] cpu=69.6% memory=26.6% requests=8023\n[2024-03-21 13:25] cpu=59.6% memory=51.3% requests=8053\n[2024-03-21 13:30] cpu=34.2% memory=64.6% requests=7353\n[2024-03-21 13:35] cpu=44.4% memory=79.9% requests=1495\n[2024-03-21 13:40] cpu=45.8% memory=72.0% requests=9840\n[2024-03-21 13:45] cpu=45.4% memory=76.5% requests=4332\n[2024-03-21 13:50] cpu=30.9% memory=74.9% requests=1537\n[2024-03-21 13:55] cpu=74.3% memory=68.0% requests=6980\n[2024-03-21 14:00] cpu=32.2% memory=74.4% requests=4246\n[2024-03-21 14:05] cpu=58.0% memory=45.9% requests=5993",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "summary_10",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a monitoring assistant. Read the status updates below and answer questions precisely. When data is summarized or omitted, work with what you have — say 'unknown' if the answer requires data you don't have.\n\nSummary of updates 1-40 (2024-03-21 10:00 to 2024-03-21 13:15):\n  cpu: range 16.6%-90.4%, avg 49.7%, peak at 2024-03-21 10:15\n  memory: range 20.2%-88.5%, avg 53.1%, peak at 2024-03-21 10:50\n  requests: range 1237.0-9784.0, avg 5104.2, peak at 2024-03-21 10:50\n  Alerts: disk_failure_sector_7742 at 2024-03-21 11:10\n\nRecent updates:\n[2024-03-21 13:20] cpu=69.6% memory=26.6% requests=8023\n[2024-03-21 13:25] cpu=59.6% memory=51.3% requests=8053\n[2024-03-21 13:30] cpu=34.2% memory=64.6% requests=7353\n[2024-03-21 13:35] cpu=44.4% memory=79.9% requests=1495\n[2024-03-21 13:40] cpu=45.8% memory=72.0% requests=9840\n[2024-03-21 13:45] cpu=45.4% memory=76.5% requests=4332\n[2024-03-21 13:50] cpu=30.9% memory=74.9% requests=1537\n[2024-03-21 13:55] cpu=74.3% memory=68.0% requests=6980\n[2024-03-21 14:00] cpu=32.2% memory=74.4% requests=4246\n[2024-03-21 14:05] cpu=58.0% memory=45.9% requests=5993",
+      "allowed_tools": [],
+      "max_turns": 1,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "What are the CURRENT (latest) values of cpu, memory, and requests?",
+        "expected": "cpu=58.0%, memory=45.9%, requests=5993",
+        "difficulty": "easy",
+        "tags": [
+          "latest-value"
+        ],
+        "check_fn": "\"58.0%\" in output and \"45.9%\" in output and \"5993\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "What was the PEAK (highest) cpu value across all updates, and at what timestamp did it occur?",
+        "expected": "peak=90.4% at 2024-03-21 10:15",
+        "difficulty": "medium",
+        "tags": [
+          "aggregation",
+          "peak"
+        ],
+        "check_fn": "\"90.4%\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "How many times did cpu EXCEED 80%? Give the exact count.",
+        "expected": "count=6",
+        "difficulty": "medium",
+        "tags": [
+          "aggregation",
+          "count"
+        ],
+        "check_fn": "\"6\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Was there ever a non-'none' alert in the updates? If yes, what was the alert value and when?",
+        "expected": "alert=disk_failure_sector_7742 at 2024-03-21 11:10",
+        "difficulty": "hard",
+        "tags": [
+          "needle-in-haystack"
+        ],
+        "check_fn": "\"disk_failure_sector_7742\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "What were the cpu, memory, and requests values at timestamp 2024-03-21 12:00?",
+        "expected": "cpu=33.0%, memory=31.5%, requests=4357",
+        "difficulty": "medium",
+        "tags": [
+          "historical-lookup"
+        ],
+        "check_fn": "\"33.0%\" in output and \"31.5%\" in output and \"4357\" in output"
+      }
+    ],
+    "tags": [
+      "observation-masking",
+      "context-compression",
+      "research",
+      "tournament",
+      "realtime_context_update_v4"
+    ],
+    "num_samples": 8,
+    "setup_files": {},
+    "setup_script": null
+  },
+  "started_at": "2026-03-22T14:46:22.131635+00:00",
+  "finished_at": "2026-03-22T14:47:54.081864+00:00",
+  "num_tasks": 5,
+  "trials_a_count": 40,
+  "trials_b_count": 40
+}
