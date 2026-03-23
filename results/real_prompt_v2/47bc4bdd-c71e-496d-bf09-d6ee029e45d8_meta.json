@@ -1,0 +1,111 @@
+{
+  "run_id": "47bc4bdd-c71e-496d-bf09-d6ee029e45d8",
+  "experiment": {
+    "name": "real_prompt_v2",
+    "description": "Minimal vs structured prompt on reasoning-hard tasks. Both Haiku, 15 turns. Tests if structured prompting helps at the model's capability edge.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Minimal vs structured prompt on reasoning-hard tasks"
+    },
+    "agent_a": {
+      "name": "minimal",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a software developer. Fix the bugs and make all tests pass.\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "structured",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior software developer. Follow this workflow:\n\n1. Run the test suite to understand what's failing\n2. Read the source code carefully — pay attention to operator precedence,\n   data types, and Python-specific semantics\n3. Identify the root cause of each failure\n4. Fix all bugs — think about edge cases before editing\n5. Run tests again to verify\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t1/urlparse.py. Run: cd tasks/t1 && python test_urlparse.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "regex",
+          "url-parsing"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t2/money.py. Run: cd tasks/t2 && python test_money.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "floating-point",
+          "precision"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t3/hooks.py. Run: cd tasks/t3 && python test_hooks.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "closure",
+          "python-gotcha"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t4/codec.py. Run: cd tasks/t4 && python test_codec.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "bit-manipulation",
+          "codec"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "prompt-engineering",
+      "reasoning-hard",
+      "realistic"
+    ],
+    "num_samples": 8,
+    "setup_files": {
+      "tasks/t1/urlparse.py": "import re\n\ndef is_valid_url(url):\n    \"\"\"Validate URL format. Must have scheme, host, optional port/path/query.\"\"\"\n    # Bug: regex doesn't handle URLs with port numbers correctly\n    # e.g., http://localhost:8080/path should be valid\n    pattern = r\"^https?://[a-zA-Z0-9.-]+(/[a-zA-Z0-9._~:/?#@!$&'()*+,;=-]*)?$\"\n    return bool(re.match(pattern, url))\n\ndef extract_domain(url):\n    \"\"\"Extract domain from URL, stripping www. prefix.\"\"\"\n    # Bug: greedy match captures port as part of domain\n    match = re.match(r\"^https?://(www\\.)?([^/]+)\", url)\n    if not match:\n        return None\n    domain = match.group(2)\n    return domain\n\ndef extract_query_params(url):\n    \"\"\"Extract query parameters as dict from URL.\"\"\"\n    match = re.search(r\"\\?(.+?)(?:#|$)\", url)\n    if not match:\n        return {}\n    params = {}\n    for pair in match.group(1).split(\"&\"):\n        if \"=\" in pair:\n            key, value = pair.split(\"=\", 1)\n            params[key] = value\n    return params\n",
+      "tasks/t1/test_urlparse.py": "from urlparse import is_valid_url, extract_domain, extract_query_params\n\ndef test_valid_urls():\n    assert is_valid_url(\"http://example.com\")\n    assert is_valid_url(\"https://example.com/path\")\n    assert is_valid_url(\"https://example.com/path?q=1\")\n    print(\"  valid_urls: PASSED\")\n\ndef test_url_with_port():\n    assert is_valid_url(\"http://localhost:8080\"), \"URL with port should be valid\"\n    assert is_valid_url(\"https://api.example.com:443/v1\"), \"URL with port+path should be valid\"\n    print(\"  url_with_port: PASSED\")\n\ndef test_invalid_urls():\n    assert not is_valid_url(\"not-a-url\")\n    assert not is_valid_url(\"ftp://example.com\")\n    assert not is_valid_url(\"\")\n    print(\"  invalid_urls: PASSED\")\n\ndef test_extract_domain():\n    assert extract_domain(\"https://www.example.com/path\") == \"example.com\"\n    assert extract_domain(\"http://api.example.com\") == \"api.example.com\"\n    print(\"  extract_domain: PASSED\")\n\ndef test_extract_domain_with_port():\n    \"\"\"Domain extraction should NOT include the port number.\"\"\"\n    result = extract_domain(\"http://localhost:8080/path\")\n    assert result == \"localhost\", f\"Expected 'localhost', got '{result}'\"\n    result = extract_domain(\"https://api.example.com:443/v1\")\n    assert result == \"api.example.com\", f\"Expected 'api.example.com', got '{result}'\"\n    print(\"  extract_domain_with_port: PASSED\")\n\ndef test_query_params():\n    params = extract_query_params(\"http://example.com?name=alice&age=30\")\n    assert params == {\"name\": \"alice\", \"age\": \"30\"}\n    assert extract_query_params(\"http://example.com\") == {}\n    print(\"  query_params: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_valid_urls\", \"test_url_with_port\", \"test_invalid_urls\",\n                  \"test_extract_domain\", \"test_extract_domain_with_port\", \"test_query_params\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/money.py": "class Money:\n    \"\"\"Money arithmetic that avoids floating-point errors.\"\"\"\n\n    def __init__(self, amount):\n        # Store as float (this is the root design issue)\n        self.amount = float(amount)\n\n    def add(self, other):\n        # Bug: floating point accumulation error\n        # 0.1 + 0.2 = 0.30000000000000004 in IEEE 754\n        return Money(self.amount + other.amount)\n\n    def multiply(self, factor):\n        return Money(self.amount * factor)\n\n    def equals(self, other, precision=2):\n        \"\"\"Compare with rounding to given decimal places.\"\"\"\n        # Bug: rounds each side independently, which can give wrong results\n        # round(2.675, 2) = 2.67 in Python (banker's rounding), not 2.68\n        return round(self.amount, precision) == round(other.amount, precision)\n\n    def to_cents(self):\n        \"\"\"Convert to integer cents.\"\"\"\n        # Bug: int() truncates instead of rounding\n        # Money(19.99).to_cents() = 1998 instead of 1999\n        return int(self.amount * 100)\n\n    def format(self):\n        return f\"${self.amount:.2f}\"\n\n    def __repr__(self):\n        return f\"Money({self.amount})\"\n",
+      "tasks/t2/test_money.py": "from money import Money\n\ndef test_basic_arithmetic():\n    a = Money(10.50)\n    b = Money(3.25)\n    result = a.add(b)\n    assert result.format() == \"$13.75\"\n    print(\"  basic_arithmetic: PASSED\")\n\ndef test_accumulation():\n    \"\"\"Adding 0.10 ten times should equal 1.00.\"\"\"\n    total = Money(0)\n    for _ in range(10):\n        total = total.add(Money(0.10))\n    assert total.to_cents() == 100, \\\n        f\"10 × $0.10 should be 100 cents, got {total.to_cents()} (amount={total.amount})\"\n    print(\"  accumulation: PASSED\")\n\ndef test_to_cents():\n    assert Money(19.99).to_cents() == 1999, \\\n        f\"$19.99 = 1999 cents, got {Money(19.99).to_cents()}\"\n    assert Money(0.01).to_cents() == 1\n    assert Money(100.00).to_cents() == 10000\n    print(\"  to_cents: PASSED\")\n\ndef test_equals():\n    assert Money(10.00).equals(Money(10.00))\n    assert Money(10.001).equals(Money(10.002))  # same at 2 decimal places\n    assert not Money(10.01).equals(Money(10.02))\n    print(\"  equals: PASSED\")\n\ndef test_multiply():\n    result = Money(10.00).multiply(1.08)  # 8% tax\n    assert result.to_cents() == 1080, \\\n        f\"$10 × 1.08 should be 1080 cents, got {result.to_cents()}\"\n    print(\"  multiply: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_arithmetic\", \"test_accumulation\",\n                  \"test_to_cents\", \"test_equals\", \"test_multiply\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/hooks.py": "class HookManager:\n    \"\"\"Register and run hooks with arguments.\"\"\"\n\n    def __init__(self):\n        self.hooks = {}\n\n    def register_batch(self, names):\n        \"\"\"Register a hook for each name that returns the name when called.\"\"\"\n        for name in names:\n            # Bug: closure captures loop variable by reference, not by value\n            # All hooks will return the LAST name in the list\n            self.hooks[name] = lambda: name\n\n    def register(self, name, fn):\n        self.hooks[name] = fn\n\n    def run(self, name, *args, **kwargs):\n        if name not in self.hooks:\n            return None\n        return self.hooks[name](*args, **kwargs)\n\n    def run_all(self):\n        \"\"\"Run all hooks and return {name: result} dict.\"\"\"\n        return {name: fn() for name, fn in self.hooks.items()}\n\n    def create_counter(self, name):\n        \"\"\"Create a hook that counts how many times it's been called.\"\"\"\n        count = [0]\n        def counter():\n            count[0] += 1\n            return count[0]\n        self.hooks[name] = counter\n\n    def create_pipeline(self, name, *fns):\n        \"\"\"Create a hook that runs functions in sequence, passing result forward.\"\"\"\n        def pipeline(value):\n            result = value\n            for fn in fns:\n                result = fn(result)\n            return result\n        self.hooks[name] = pipeline\n",
+      "tasks/t3/test_hooks.py": "from hooks import HookManager\n\ndef test_register_and_run():\n    hm = HookManager()\n    hm.register(\"greet\", lambda name: f\"Hello, {name}!\")\n    assert hm.run(\"greet\", \"Alice\") == \"Hello, Alice!\"\n    assert hm.run(\"missing\") is None\n    print(\"  register_and_run: PASSED\")\n\ndef test_register_batch():\n    \"\"\"Each hook should return its OWN name, not the last one.\"\"\"\n    hm = HookManager()\n    hm.register_batch([\"alpha\", \"beta\", \"gamma\"])\n    assert hm.run(\"alpha\") == \"alpha\", f\"Expected 'alpha', got '{hm.run('alpha')}'\"\n    assert hm.run(\"beta\") == \"beta\", f\"Expected 'beta', got '{hm.run('beta')}'\"\n    assert hm.run(\"gamma\") == \"gamma\", f\"Expected 'gamma', got '{hm.run('gamma')}'\"\n    print(\"  register_batch: PASSED\")\n\ndef test_run_all():\n    hm = HookManager()\n    hm.register_batch([\"x\", \"y\", \"z\"])\n    results = hm.run_all()\n    assert results == {\"x\": \"x\", \"y\": \"y\", \"z\": \"z\"}, f\"Got {results}\"\n    print(\"  run_all: PASSED\")\n\ndef test_counter():\n    hm = HookManager()\n    hm.create_counter(\"clicks\")\n    assert hm.run(\"clicks\") == 1\n    assert hm.run(\"clicks\") == 2\n    assert hm.run(\"clicks\") == 3\n    print(\"  counter: PASSED\")\n\ndef test_pipeline():\n    hm = HookManager()\n    hm.create_pipeline(\"transform\",\n                        lambda x: x * 2,\n                        lambda x: x + 10,\n                        lambda x: str(x))\n    assert hm.run(\"transform\", 5) == \"20\", f\"Got {hm.run('transform', 5)}\"\n    print(\"  pipeline: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_register_and_run\", \"test_register_batch\", \"test_run_all\",\n                  \"test_counter\", \"test_pipeline\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/codec.py": "def encode(data):\n    \"\"\"Simple encoding: shift each byte left by 2 and XOR with 0xAA.\"\"\"\n    result = []\n    for b in data:\n        shifted = (b << 3) & 0xFF  # Bug: should be << 2\n        result.append(shifted ^ 0xAA)\n    return bytes(result)\n\ndef decode(encoded):\n    \"\"\"Reverse the encoding.\"\"\"\n    result = []\n    for b in encoded:\n        unxored = b ^ 0xAA\n        shifted = (unxored >> 3) & 0xFF  # Bug: should be >> 2\n        result.append(shifted)\n    return bytes(result)\n\ndef encode_string(text):\n    return encode(text.encode(\"utf-8\"))\n\ndef decode_string(encoded):\n    return decode(encoded).decode(\"utf-8\", errors=\"replace\")\n",
+      "tasks/t4/test_codec.py": "from codec import encode, decode, encode_string, decode_string\n\ndef test_encode_known():\n    \"\"\"Encoding byte 65 (A): (65 << 2) & 0xFF = 4, 4 ^ 0xAA = 0xAE.\"\"\"\n    result = encode(b\"A\")\n    expected = bytes([0x04 ^ 0xAA])\n    assert result == expected, f\"encode(b'A') = {result.hex()}, expected {expected.hex()}\"\n    print(\"  encode_known: PASSED\")\n\ndef test_roundtrip():\n    original = b\"Hello, World!\"\n    assert decode(encode(original)) == original, \"Roundtrip failed\"\n    print(\"  roundtrip: PASSED\")\n\ndef test_string_roundtrip():\n    original = \"Testing 123!\"\n    assert decode_string(encode_string(original)) == original\n    print(\"  string_roundtrip: PASSED\")\n\ndef test_all_bytes():\n    original = bytes(range(256))\n    assert decode(encode(original)) == original, \"Not all bytes survived\"\n    print(\"  all_bytes: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_encode_known\", \"test_roundtrip\",\n                  \"test_string_roundtrip\", \"test_all_bytes\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-23T08:19:05.736172+00:00",
+  "finished_at": "2026-03-23T08:28:57.192121+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 32,
+  "trials_b_count": 32
+}

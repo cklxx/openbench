@@ -1,0 +1,111 @@
+{
+  "run_id": "27f57222-ed12-4dd5-9f1b-d4148be93b8c",
+  "experiment": {
+    "name": "real_prompt_engineering",
+    "description": "Real prompt decision: minimal ('fix the bugs') vs structured ('run tests → read → fix → review → verify'). Mixed-difficulty tasks, generous turns. Both are reasonable prompts.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Minimal (trust the model) vs structured (explicit workflow + review step)"
+    },
+    "agent_a": {
+      "name": "minimal",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a software developer. Fix the bugs and make all tests pass.\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "structured",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a senior software developer. Follow this workflow:\n\n1. Run the test suite to understand what's failing\n2. Read the source code to understand the codebase\n3. Identify the root cause of each failure\n4. Fix all bugs\n5. Review your changes — make sure you haven't introduced new issues\n6. Run tests again to verify everything passes\n\nThink carefully about edge cases before editing.\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t1/strutil.py. Run: cd tasks/t1 && python test_strutil.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "string-utils",
+          "1-bug"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t2/aggregator.py. Run: cd tasks/t2 && python test_aggregator.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "aggregator",
+          "2-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t3/expr.py. Run: cd tasks/t3 && python test_expr.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "parser",
+          "2-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t4/deps.py. Run: cd tasks/t4 && python test_deps.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "graph-algorithm",
+          "2-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "prompt-engineering",
+      "minimal-vs-structured",
+      "realistic"
+    ],
+    "num_samples": 8,
+    "setup_files": {
+      "tasks/t1/strutil.py": "def truncate(text, max_len, suffix=\"...\"):\n    \"\"\"Truncate text to max_len, adding suffix if truncated.\"\"\"\n    if len(text) <= max_len:\n        return text\n    # Should truncate to (max_len - len(suffix)) then add suffix\n    return text[:max_len] + suffix  # Bug: doesn't account for suffix length\n\ndef title_case(text):\n    \"\"\"Capitalize first letter of each word.\"\"\"\n    return \" \".join(w.capitalize() for w in text.split())\n\ndef count_words(text):\n    \"\"\"Count words in text, ignoring extra whitespace.\"\"\"\n    return len(text.split())\n",
+      "tasks/t1/test_strutil.py": "from strutil import truncate, title_case, count_words\n\ndef test_truncate():\n    assert truncate(\"Hello\", 10) == \"Hello\"\n    result = truncate(\"Hello World!\", 8)\n    assert len(result) <= 8, f\"Truncated should be <= 8 chars, got {len(result)}: '{result}'\"\n    assert result.endswith(\"...\"), f\"Should end with ...: '{result}'\"\n    assert result == \"Hello...\", f\"Expected 'Hello...' (5+3=8), got '{result}'\"\n    print(\"  truncate: PASSED\")\n\ndef test_truncate_custom_suffix():\n    result = truncate(\"Long text here\", 10, suffix=\"..\")\n    assert len(result) <= 10\n    assert result.endswith(\"..\")\n    print(\"  truncate_custom_suffix: PASSED\")\n\ndef test_title_case():\n    assert title_case(\"hello world\") == \"Hello World\"\n    assert title_case(\"ALREADY CAPS\") == \"Already Caps\"\n    print(\"  title_case: PASSED\")\n\ndef test_count_words():\n    assert count_words(\"hello world\") == 2\n    assert count_words(\"  spaced  out  \") == 2\n    print(\"  count_words: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_truncate\", \"test_truncate_custom_suffix\",\n                  \"test_title_case\", \"test_count_words\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/aggregator.py": "from collections import defaultdict\n\nclass Aggregator:\n    def __init__(self):\n        self.data = defaultdict(list)\n\n    def add(self, group, value):\n        self.data[group].append(value)\n\n    def mean(self, group):\n        values = self.data.get(group, [])\n        if not values:\n            return None\n        return sum(values) / len(values)\n\n    def median(self, group):\n        values = sorted(self.data.get(group, []))\n        if not values:\n            return None\n        n = len(values)\n        mid = n // 2\n        if n % 2 == 0:\n            # Bug: returns only values[mid] instead of average of two middle\n            return values[mid]\n        return values[mid]\n\n    def percentile(self, group, p):\n        \"\"\"Return the p-th percentile (0-100) using nearest-rank method.\"\"\"\n        values = sorted(self.data.get(group, []))\n        if not values:\n            return None\n        # Bug: doesn't clamp p to 0-100 range, and uses wrong index formula\n        # Nearest rank: index = ceil(p/100 * n) - 1\n        import math\n        index = int(p / 100 * len(values))  # should be ceil, then -1\n        return values[min(index, len(values) - 1)]\n\n    def groups(self):\n        return list(self.data.keys())\n",
+      "tasks/t2/test_aggregator.py": "from aggregator import Aggregator\n\ndef test_mean():\n    a = Aggregator()\n    for v in [10, 20, 30]:\n        a.add(\"sales\", v)\n    assert a.mean(\"sales\") == 20.0\n    assert a.mean(\"empty\") is None\n    print(\"  mean: PASSED\")\n\ndef test_median_odd():\n    a = Aggregator()\n    for v in [3, 1, 2]:\n        a.add(\"x\", v)\n    assert a.median(\"x\") == 2, f\"Median of [1,2,3] should be 2, got {a.median('x')}\"\n    print(\"  median_odd: PASSED\")\n\ndef test_median_even():\n    a = Aggregator()\n    for v in [1, 2, 3, 4]:\n        a.add(\"x\", v)\n    result = a.median(\"x\")\n    assert result == 2.5, f\"Median of [1,2,3,4] should be 2.5, got {result}\"\n    print(\"  median_even: PASSED\")\n\ndef test_percentile():\n    a = Aggregator()\n    for v in [15, 20, 35, 40, 50]:\n        a.add(\"scores\", v)\n    # 90th percentile of [15,20,35,40,50]: nearest rank = ceil(0.9*5) = 5 → index 4 → 50\n    result = a.percentile(\"scores\", 90)\n    assert result == 50, f\"90th percentile should be 50, got {result}\"\n    # 20th percentile: ceil(0.2*5) = 1 → index 0 → 15\n    result = a.percentile(\"scores\", 20)\n    assert result == 15, f\"20th percentile should be 15, got {result}\"\n    print(\"  percentile: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_mean\", \"test_median_odd\", \"test_median_even\", \"test_percentile\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/expr.py": "class ExprParser:\n    \"\"\"Simple arithmetic expression parser: +, -, *, /, parentheses.\n    Respects precedence: * and / bind tighter than + and -.\n    \"\"\"\n    def __init__(self, text):\n        self.text = text.replace(\" \", \"\")\n        self.pos = 0\n\n    def parse(self):\n        result = self._expr()\n        if self.pos < len(self.text):\n            raise ValueError(f\"Unexpected char at {self.pos}: '{self.text[self.pos]}'\")\n        return result\n\n    def _expr(self):\n        \"\"\"Handle + and - (lowest precedence).\"\"\"\n        left = self._term()\n        while self.pos < len(self.text) and self.text[self.pos] in \"+-\":\n            op = self.text[self.pos]\n            self.pos += 1\n            right = self._term()\n            if op == \"+\":\n                left = left + right\n            else:\n                left = left - right\n        return left\n\n    def _term(self):\n        \"\"\"Handle * and / (higher precedence).\"\"\"\n        left = self._factor()\n        while self.pos < len(self.text) and self.text[self.pos] in \"*/\":\n            op = self.text[self.pos]\n            self.pos += 1\n            right = self._factor()\n            if op == \"*\":\n                left = left * right\n            else:\n                # Bug A: integer division instead of float division\n                left = left // right\n        return left\n\n    def _factor(self):\n        \"\"\"Handle numbers and parentheses.\"\"\"\n        if self.pos < len(self.text) and self.text[self.pos] == \"(\":\n            self.pos += 1  # skip (\n            result = self._expr()\n            if self.pos < len(self.text) and self.text[self.pos] == \")\":\n                self.pos += 1  # skip )\n            return result\n\n        # Parse number (int or float)\n        start = self.pos\n        # Bug B: doesn't handle negative numbers like (-3)\n        while self.pos < len(self.text) and (self.text[self.pos].isdigit() or self.text[self.pos] == \".\"):\n            self.pos += 1\n        if self.pos == start:\n            raise ValueError(f\"Expected number at {self.pos}\")\n        return float(self.text[start:self.pos])\n\n\ndef evaluate(expression):\n    \"\"\"Evaluate a math expression string.\"\"\"\n    return ExprParser(expression).parse()\n",
+      "tasks/t3/test_expr.py": "from expr import evaluate\n\ndef test_basic_arithmetic():\n    assert evaluate(\"2 + 3\") == 5.0\n    assert evaluate(\"10 - 4\") == 6.0\n    assert evaluate(\"3 * 4\") == 12.0\n    print(\"  basic_arithmetic: PASSED\")\n\ndef test_precedence():\n    assert evaluate(\"2 + 3 * 4\") == 14.0, f\"Got {evaluate('2 + 3 * 4')}\"\n    assert evaluate(\"10 - 2 * 3\") == 4.0\n    print(\"  precedence: PASSED\")\n\ndef test_float_division():\n    result = evaluate(\"7 / 2\")\n    assert result == 3.5, f\"7/2 should be 3.5, got {result}\"\n    result = evaluate(\"10 / 4\")\n    assert result == 2.5, f\"10/4 should be 2.5, got {result}\"\n    print(\"  float_division: PASSED\")\n\ndef test_parentheses():\n    assert evaluate(\"(2 + 3) * 4\") == 20.0\n    assert evaluate(\"2 * (3 + 4)\") == 14.0\n    print(\"  parentheses: PASSED\")\n\ndef test_negative_in_parens():\n    \"\"\"Negative numbers in parentheses should work.\"\"\"\n    result = evaluate(\"5 + (-3)\")\n    assert result == 2.0, f\"5 + (-3) should be 2.0, got {result}\"\n    result = evaluate(\"(-2) * 3\")\n    assert result == -6.0, f\"(-2) * 3 should be -6.0, got {result}\"\n    print(\"  negative_in_parens: PASSED\")\n\ndef test_complex():\n    result = evaluate(\"(10 + 5) / 2 + 3 * (4 - 1)\")\n    # (10+5)/2 + 3*(4-1) = 15/2 + 3*3 = 7.5 + 9 = 16.5\n    assert result == 16.5, f\"Expected 16.5, got {result}\"\n    print(\"  complex: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_arithmetic\", \"test_precedence\", \"test_float_division\",\n                  \"test_parentheses\", \"test_negative_in_parens\", \"test_complex\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/deps.py": "class DependencyResolver:\n    \"\"\"Resolve dependencies in topological order with cycle detection.\"\"\"\n\n    def __init__(self):\n        self.deps = {}  # node -> set of dependencies\n\n    def add(self, node, depends_on=None):\n        if node not in self.deps:\n            self.deps[node] = set()\n        if depends_on:\n            if depends_on not in self.deps:\n                self.deps[depends_on] = set()\n            self.deps[node].add(depends_on)\n\n    def resolve(self):\n        \"\"\"Return nodes in dependency order (dependencies first).\n        Raises ValueError on circular dependency.\"\"\"\n        resolved = []\n        seen = set()\n        visiting = set()\n\n        def visit(node):\n            if node in resolved:\n                return\n            if node in visiting:\n                raise ValueError(f\"Circular dependency: {node}\")\n            visiting.add(node)\n            for dep in self.deps.get(node, set()):\n                visit(dep)\n            visiting.remove(node)\n            # Bug A: adds to seen but checks resolved — should use same set\n            seen.add(node)\n            resolved.append(node)\n\n        for node in self.deps:\n            visit(node)\n        return resolved\n\n    def depends_on(self, node):\n        \"\"\"Return ALL dependencies (transitive) for a node.\"\"\"\n        result = set()\n        stack = list(self.deps.get(node, set()))\n        while stack:\n            dep = stack.pop()\n            if dep not in result:\n                result.add(dep)\n                # Bug B: extends with deps.get(dep, []) but deps values are sets\n                # This works but doesn't recurse — only gets direct deps\n                # Actually the stack-based approach should work... let me make a real bug\n                stack.extend(self.deps.get(dep, set()))\n        return result\n\n    def install_order(self):\n        \"\"\"Return (node, [its_direct_deps]) pairs in install order.\"\"\"\n        order = self.resolve()\n        return [(n, sorted(self.deps.get(n, set()))) for n in order]\n",
+      "tasks/t4/test_deps.py": "from deps import DependencyResolver\n\ndef test_simple_chain():\n    r = DependencyResolver()\n    r.add(\"app\", depends_on=\"framework\")\n    r.add(\"framework\", depends_on=\"stdlib\")\n    r.add(\"stdlib\")\n    order = r.resolve()\n    assert order.index(\"stdlib\") < order.index(\"framework\") < order.index(\"app\"), \\\n        f\"Wrong order: {order}\"\n    print(\"  simple_chain: PASSED\")\n\ndef test_diamond():\n    \"\"\"A depends on B and C, both depend on D.\"\"\"\n    r = DependencyResolver()\n    r.add(\"A\", depends_on=\"B\")\n    r.add(\"A\", depends_on=\"C\")\n    r.add(\"B\", depends_on=\"D\")\n    r.add(\"C\", depends_on=\"D\")\n    r.add(\"D\")\n    order = r.resolve()\n    assert order.index(\"D\") < order.index(\"B\"), f\"D before B: {order}\"\n    assert order.index(\"D\") < order.index(\"C\"), f\"D before C: {order}\"\n    assert order.index(\"B\") < order.index(\"A\"), f\"B before A: {order}\"\n    assert order.index(\"C\") < order.index(\"A\"), f\"C before A: {order}\"\n    print(\"  diamond: PASSED\")\n\ndef test_circular():\n    r = DependencyResolver()\n    r.add(\"A\", depends_on=\"B\")\n    r.add(\"B\", depends_on=\"C\")\n    r.add(\"C\", depends_on=\"A\")\n    try:\n        r.resolve()\n        assert False, \"Should raise ValueError for circular dependency\"\n    except ValueError as e:\n        assert \"Circular\" in str(e) or \"circular\" in str(e)\n    print(\"  circular: PASSED\")\n\ndef test_transitive_deps():\n    r = DependencyResolver()\n    r.add(\"app\", depends_on=\"web\")\n    r.add(\"web\", depends_on=\"http\")\n    r.add(\"http\", depends_on=\"socket\")\n    r.add(\"socket\")\n    all_deps = r.depends_on(\"app\")\n    assert all_deps == {\"web\", \"http\", \"socket\"}, \\\n        f\"app's transitive deps should be {{web, http, socket}}, got {all_deps}\"\n    print(\"  transitive_deps: PASSED\")\n\ndef test_no_duplicate_in_order():\n    \"\"\"Each node should appear exactly once in the resolved order.\"\"\"\n    r = DependencyResolver()\n    r.add(\"A\", depends_on=\"C\")\n    r.add(\"B\", depends_on=\"C\")\n    r.add(\"C\")\n    order = r.resolve()\n    assert len(order) == len(set(order)), f\"Duplicates in order: {order}\"\n    assert len(order) == 3, f\"Expected 3 nodes, got {len(order)}: {order}\"\n    print(\"  no_duplicate: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_simple_chain\", \"test_diamond\", \"test_circular\",\n                  \"test_transitive_deps\", \"test_no_duplicate_in_order\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-23T07:21:26.079038+00:00",
+  "finished_at": "2026-03-23T07:27:21.805211+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 32,
+  "trials_b_count": 32
+}
