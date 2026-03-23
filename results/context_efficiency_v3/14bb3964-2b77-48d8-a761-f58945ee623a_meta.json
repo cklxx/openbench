@@ -1,0 +1,106 @@
+{
+  "run_id": "14bb3964-2b77-48d8-a761-f58945ee623a",
+  "experiment": {
+    "name": "context_efficiency_v3",
+    "description": "Context efficiency v3: extreme turn pressure (max_turns=4) on large codebases (4-6 files). Guided agent gets exact file+line bug descriptions. Tests navigation guidance value when exploration budget is near-zero.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "unguided (no codebase info) vs guided (exact file+line bug locations per task)"
+    },
+    "agent_a": {
+      "name": "unguided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Fix the bugs. Run the test, find what's wrong, fix it.\nYou have extremely limited turns — be very efficient.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 4,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "guided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You have exact bug locations for each task. Use them to skip exploration:\n\nCODEBASE MAP for tasks/t1/:\n- validators.py line ~8: stock check is `stock < 0` but should be `quantity > stock`\n- services.py line ~37: cancel_order does `stock -= qty` but should `+= qty`\n- utils.py line ~3: format_currency uses abs() losing negative sign\n- models.py, repository.py: NO BUGS\n- test_app.py: ground truth\n\nGo directly to the 3 buggy files, fix them, run test once.\n\n\nCODEBASE MAP for tasks/t2/:\n- auth.py line ~12: stores hash as .upper() but verify compares lowercase\n- session.py line ~18: validate() has condition inverted (> should be <)\n- hasher.py, test_auth.py: NO BUGS\n\nGo directly to auth.py and session.py, fix both, run test once.\n\n\nCODEBASE MAP for tasks/t3/:\n- engine.py line ~15: apply_tax called with wrong argument order (rate, amount instead of amount, rate)\n- inventory.py line ~20: restock() adds to wrong field (reserved instead of available)\n- shipping.py line ~10: calculate_shipping uses weight threshold backwards (> should be <)\n- models.py, test_warehouse.py: NO BUGS\n\nFix the 3 bugs, run test once.\n\n\nGo directly to the buggy files listed above. Fix them. Run test once. Done.\nYou have extremely limited turns — do NOT explore or read files not listed.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 4,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/ (6-file e-commerce). Run `cd tasks/t1 && python test_app.py`. Print test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "6-file",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t2/ (4-file auth). Run `cd tasks/t2 && python test_auth.py`. Print test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "4-file",
+          "2-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/ (6-file warehouse). Run `cd tasks/t3 && python test_warehouse.py`. Print test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "6-file",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "context-efficiency",
+      "extreme-pressure",
+      "navigation",
+      "research"
+    ],
+    "num_samples": 10,
+    "setup_files": {
+      "tasks/t1/models.py": "from dataclasses import dataclass, field\nfrom enum import Enum\n\nclass OrderStatus(Enum):\n    PENDING = \"pending\"\n    CONFIRMED = \"confirmed\"\n    CANCELLED = \"cancelled\"\n\n@dataclass\nclass User:\n    id: int\n    name: str\n    is_premium: bool = False\n\n@dataclass\nclass Product:\n    id: int\n    name: str\n    price: float\n    stock: int\n\n@dataclass\nclass OrderItem:\n    product: Product\n    quantity: int\n    @property\n    def subtotal(self):\n        return self.product.price * self.quantity\n\n@dataclass\nclass Order:\n    id: int\n    user: User\n    items: list = field(default_factory=list)\n    status: OrderStatus = OrderStatus.PENDING\n    discount_pct: float = 0.0\n    def add_item(self, p, q):\n        self.items.append(OrderItem(p, q))\n    @property\n    def subtotal(self):\n        return sum(i.subtotal for i in self.items)\n    @property\n    def total(self):\n        return round(self.subtotal * (1 - self.discount_pct/100), 2)\n",
+      "tasks/t1/repository.py": "class Repository:\n    def __init__(self):\n        self.orders = {}\n        self._oid = 1\n    def next_id(self):\n        oid = self._oid; self._oid += 1; return oid\n    def save(self, order):\n        self.orders[order.id] = order\n",
+      "tasks/t1/validators.py": "def validate_order(order):\n    errors = []\n    if not order.items:\n        errors.append(\"Empty order\")\n    for item in order.items:\n        if item.quantity <= 0:\n            errors.append(f\"Bad qty: {item.product.name}\")\n        if item.product.stock < 0:  # Bug: should be item.quantity > item.product.stock\n            errors.append(f\"No stock: {item.product.name}\")\n    return len(errors) == 0, errors\n",
+      "tasks/t1/services.py": "from models import OrderStatus, Order\nfrom validators import validate_order\n\nclass OrderService:\n    def __init__(self, repo):\n        self.repo = repo\n    def create(self, user, items):\n        order = Order(id=self.repo.next_id(), user=user)\n        for p, q in items:\n            order.add_item(p, q)\n        if user.is_premium:\n            order.discount_pct = 10\n        return order\n    def confirm(self, order):\n        ok, errs = validate_order(order)\n        if not ok:\n            return False, errs\n        for i in order.items:\n            i.product.stock -= i.quantity\n        order.status = OrderStatus.CONFIRMED\n        self.repo.save(order)\n        return True, []\n    def cancel(self, order):\n        if order.status != OrderStatus.CONFIRMED:\n            return False, [\"Not confirmed\"]\n        for i in order.items:\n            i.product.stock -= i.quantity  # Bug: -= should be +=\n        order.status = OrderStatus.CANCELLED\n        self.repo.save(order)\n        return True, []\n",
+      "tasks/t1/utils.py": "def format_currency(amount):\n    return f\"${abs(amount):.2f}\"  # Bug: abs() loses negative sign\n\ndef calculate_tax(amount, rate=0.08):\n    return round(amount * rate, 2)\n",
+      "tasks/t1/test_app.py": "from models import User, Product, OrderStatus\nfrom services import OrderService\nfrom repository import Repository\nfrom utils import format_currency\n\nrepo = Repository()\nsvc = OrderService(repo)\nuser = User(1, \"Alice\")\nlaptop = Product(1, \"Laptop\", 999.99, stock=10)\nkbd = Product(2, \"Kbd\", 79.99, stock=5)\n\norder = svc.create(user, [(laptop, 2)])\nok, e = svc.confirm(order)\nassert ok, f\"Confirm: {e}\"\nassert laptop.stock == 8\n\nbig = svc.create(user, [(kbd, 10)])\nok2, e2 = svc.confirm(big)\nassert not ok2, \"Should fail: 10 > 5 stock\"\n\npre = laptop.stock\nsvc.cancel(order)\nassert laptop.stock == pre + 2, f\"Stock: {laptop.stock} != {pre+2}\"\n\nassert format_currency(-5.50) == \"-$5.50\", f\"Neg: {format_currency(-5.50)}\"\nprint(\"PASSED\")\n",
+      "tasks/t2/hasher.py": "import hashlib\ndef hash_pw(pw):\n    return hashlib.sha256(pw.encode()).hexdigest()\ndef verify_pw(pw, hashed):\n    return hash_pw(pw) == hashed\n",
+      "tasks/t2/auth.py": "from hasher import hash_pw, verify_pw\n\nclass AuthService:\n    def __init__(self):\n        self.users = {}\n    def register(self, user, pw):\n        if user in self.users:\n            return False\n        self.users[user] = hash_pw(pw).upper()  # Bug: .upper() breaks verify\n        return True\n    def login(self, user, pw):\n        if user not in self.users:\n            return False\n        return verify_pw(pw, self.users[user])\n",
+      "tasks/t2/session.py": "class SessionMgr:\n    def __init__(self, ttl=3600):\n        self.sessions = {}\n        self.ttl = ttl\n    def create(self, user, now=0):\n        token = f\"s_{user}_{now}\"\n        self.sessions[token] = (user, now + self.ttl)\n        return token\n    def validate(self, token, now=0):\n        if token not in self.sessions:\n            return None\n        user, exp = self.sessions[token]\n        if now > exp:  # Bug: returns user for expired, None for valid\n            return user\n        return None\n",
+      "tasks/t2/test_auth.py": "from auth import AuthService\nfrom session import SessionMgr\n\nauth = AuthService()\nassert auth.register(\"alice\", \"pass123\")\nassert auth.login(\"alice\", \"pass123\"), \"Login should work\"\nassert not auth.login(\"alice\", \"wrong\")\n\nsm = SessionMgr(ttl=100)\ntok = sm.create(\"alice\", now=0)\nassert sm.validate(tok, now=50) == \"alice\", f\"Valid session: {sm.validate(tok, now=50)}\"\nassert sm.validate(tok, now=200) is None, \"Expired should be None\"\n\nprint(\"PASSED\")\n",
+      "tasks/t3/models.py": "from dataclasses import dataclass\n\n@dataclass\nclass Item:\n    sku: str\n    name: str\n    weight: float  # kg\n    available: int = 0\n    reserved: int = 0\n\n@dataclass\nclass Shipment:\n    items: list\n    destination: str\n    total_weight: float = 0.0\n    shipping_cost: float = 0.0\n    tax: float = 0.0\n",
+      "tasks/t3/inventory.py": "class InventoryManager:\n    def __init__(self):\n        self.items = {}\n    def add_item(self, item):\n        self.items[item.sku] = item\n    def check_stock(self, sku, qty):\n        item = self.items.get(sku)\n        if not item:\n            return False\n        return item.available >= qty\n    def reserve(self, sku, qty):\n        item = self.items[sku]\n        if item.available < qty:\n            return False\n        item.available -= qty\n        item.reserved += qty\n        return True\n    def restock(self, sku, qty):\n        item = self.items[sku]\n        item.reserved += qty  # Bug: should be item.available += qty\n",
+      "tasks/t3/shipping.py": "def calculate_shipping(items, destination):\n    total_weight = sum(i.weight * (i.reserved if hasattr(i, \"reserved\") else 1) for i in items)\n    # Base rate\n    if destination == \"domestic\":\n        if total_weight > 10:  # Bug: > should be < (light packages cost less)\n            rate = 5.0  # light\n        else:\n            rate = 5.0 + (total_weight - 10) * 1.5  # heavy\n    else:\n        rate = 15.0 + total_weight * 2.0\n    return round(rate, 2), round(total_weight, 2)\n",
+      "tasks/t3/engine.py": "def apply_tax(amount, rate=0.08):\n    return round(amount * rate, 2)\n\ndef process_shipment(inventory, items_qty, destination):\n    from models import Shipment\n    reserved_items = []\n    for sku, qty in items_qty:\n        if not inventory.reserve(sku, qty):\n            return None, f\"Cannot reserve {qty} of {sku}\"\n        reserved_items.append(inventory.items[sku])\n\n    from shipping import calculate_shipping\n    cost, weight = calculate_shipping(reserved_items, destination)\n\n    # Bug: arguments in wrong order (should be apply_tax(cost, 0.08))\n    tax = apply_tax(0.08, cost)\n\n    return Shipment(\n        items=reserved_items,\n        destination=destination,\n        total_weight=weight,\n        shipping_cost=cost,\n        tax=tax,\n    ), None\n",
+      "tasks/t3/test_warehouse.py": "from models import Item\nfrom inventory import InventoryManager\nfrom engine import process_shipment, apply_tax\n\ninv = InventoryManager()\ninv.add_item(Item(\"A1\", \"Widget\", weight=2.0, available=100))\ninv.add_item(Item(\"B2\", \"Gadget\", weight=5.0, available=50))\n\n# Reserve and ship\nshipment, err = process_shipment(inv, [(\"A1\", 3), (\"B2\", 2)], \"domestic\")\nassert err is None, f\"Error: {err}\"\nassert shipment is not None\n\n# Weight: 3*2 + 2*5 = 16kg\nassert shipment.total_weight == 16.0, f\"Weight: {shipment.total_weight}\"\n\n# Shipping: heavy (>10kg) = 5 + (16-10)*1.5 = 14.0\nassert shipment.shipping_cost == 14.0, f\"Shipping: {shipment.shipping_cost}\"\n\n# Tax on shipping cost\nexpected_tax = round(14.0 * 0.08, 2)\nassert shipment.tax == expected_tax, f\"Tax: {shipment.tax} != {expected_tax}\"\n\n# Restock\ninv.restock(\"A1\", 10)\nassert inv.items[\"A1\"].available == 107, f\"Restock: {inv.items['A1'].available}\"\n\n# Stock check after reserve\nassert inv.items[\"A1\"].available == 107  # was 100, -3 reserved, +10 restocked\nassert inv.items[\"A1\"].reserved == 3\n\nprint(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T14:35:28.994487+00:00",
+  "finished_at": "2026-03-21T14:40:14.835338+00:00",
+  "num_tasks": 3,
+  "trials_a_count": 30,
+  "trials_b_count": 30
+}

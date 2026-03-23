@@ -1,0 +1,124 @@
+{
+  "run_id": "51d3e375-fc05-4150-9fe0-0dba24f8340d",
+  "experiment": {
+    "name": "context_efficiency_v5",
+    "description": "Context efficiency v5: focused guidance (~100 tokens, 1-line per task) vs unguided. Tests pure navigation value without noise overhead. Same tasks as v4 but minimal prompt footprint.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "unguided vs focused guidance (concise file+bug per task, ~100 tokens)"
+    },
+    "agent_a": {
+      "name": "unguided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Fix the bugs in the project. Run the test, find and fix the root cause.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 8,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "guided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Bug locations (go directly to these files, skip everything else):\n- tasks/t1/: middleware.py (overwrites headers dict) + utils.py (normalize_path doesn't decode)\n- tasks/t2/: transforms.py (aggregate mutates original records) + loader.py (drops rows with empty fields)\n- tasks/t3/: scheduler.py (*/N cron uses == instead of %) + filters.py (> should be >= in window cutoff)\n- tasks/t4/: config_parser.py (empty deps becomes [\"\"] not []) + resolver.py (duplicate entries in order)\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 8,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t1/ (web app, 6 files). Run `cd tasks/t1 && python test_app.py`. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "6-file",
+          "middleware"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t2/ (data pipeline, 5 files). Run `cd tasks/t2 && python test_pipeline.py`. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "5-file",
+          "mutation"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t3/ (notification system, 6 files). Run `cd tasks/t3 && python test_notifications.py`. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "6-file",
+          "cron"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t4/ (build system, 5 files). Run `cd tasks/t4 && python test_build.py`. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "5-file",
+          "parser"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "context-efficiency",
+      "focused-guidance",
+      "no-noise",
+      "research"
+    ],
+    "num_samples": 8,
+    "setup_files": {
+      "tasks/t1/app.py": "\"\"\"Web application setup.\"\"\"\nfrom routes import handle_request\nfrom middleware import apply_middleware\n\nclass App:\n    def __init__(self):\n        self.middlewares = []\n        self.routes = {}\n\n    def use(self, mw):\n        self.middlewares.append(mw)\n\n    def route(self, path, handler):\n        self.routes[path] = handler\n\n    def handle(self, request):\n        # Apply middleware chain\n        for mw in self.middlewares:\n            request = apply_middleware(mw, request)\n            if request is None:\n                return {\"status\": 403, \"body\": \"Forbidden\"}\n        # Find route\n        handler = self.routes.get(request.get(\"path\"))\n        if not handler:\n            return {\"status\": 404, \"body\": \"Not Found\"}\n        return handler(request)\n",
+      "tasks/t1/middleware.py": "\"\"\"Request middleware.\"\"\"\n\ndef auth_middleware(request):\n    \"\"\"Check auth token and add user info.\"\"\"\n    token = request.get(\"headers\", {}).get(\"Authorization\", \"\")\n    if token.startswith(\"Bearer \"):\n        user = token[7:]  # Extract user from token\n        request[\"user\"] = user\n        # Bug: overwrites the entire headers dict instead of just adding to it\n        request[\"headers\"] = {\"X-User\": user}\n        return request\n    return None  # Reject unauthenticated\n\ndef logging_middleware(request):\n    \"\"\"Log request (no-op in test).\"\"\"\n    request[\"logged\"] = True\n    return request\n\ndef apply_middleware(mw, request):\n    return mw(request)\n",
+      "tasks/t1/routes.py": "\"\"\"Route handlers.\"\"\"\nfrom utils import normalize_path, format_response\n\ndef user_profile(request):\n    \"\"\"Return user profile.\"\"\"\n    user = request.get(\"user\", \"anonymous\")\n    return format_response(200, {\"name\": user, \"role\": \"member\"})\n\ndef user_settings(request):\n    \"\"\"Return user settings.\"\"\"\n    user = request.get(\"user\", \"anonymous\")\n    # Uses a header that middleware might have removed\n    content_type = request.get(\"headers\", {}).get(\"Accept\", \"application/json\")\n    return format_response(200, {\"user\": user, \"format\": content_type})\n\ndef search(request):\n    \"\"\"Search endpoint — uses query params from path.\"\"\"\n    path = request.get(\"path\", \"\")\n    query = normalize_path(path)\n    return format_response(200, {\"query\": query, \"results\": []})\n",
+      "tasks/t1/utils.py": "\"\"\"Utility functions.\"\"\"\n\ndef normalize_path(path):\n    \"\"\"Normalize URL path — decode %20 etc.\"\"\"\n    # Bug: doesn't actually decode, just strips slashes\n    return path.strip(\"/\")\n\ndef format_response(status, body):\n    return {\"status\": status, \"body\": body}\n\ndef parse_query_string(qs):\n    \"\"\"Parse 'key=val&key2=val2' into dict.\"\"\"\n    if not qs:\n        return {}\n    params = {}\n    for pair in qs.split(\"&\"):\n        if \"=\" in pair:\n            k, v = pair.split(\"=\", 1)\n            params[k] = v\n    return params\n",
+      "tasks/t1/config.py": "\"\"\"App configuration — no bugs here.\"\"\"\nDEFAULT_CONFIG = {\n    \"host\": \"0.0.0.0\",\n    \"port\": 8080,\n    \"debug\": False,\n    \"max_body_size\": 1024 * 1024,\n}\n\ndef get_config(overrides=None):\n    config = dict(DEFAULT_CONFIG)\n    if overrides:\n        config.update(overrides)\n    return config\n",
+      "tasks/t1/test_app.py": "from app import App\nfrom middleware import auth_middleware, logging_middleware\n\napp = App()\napp.use(logging_middleware)\napp.use(auth_middleware)\n\nfrom routes import user_profile, user_settings, search\napp.route(\"/profile\", user_profile)\napp.route(\"/settings\", user_settings)\napp.route(\"/search\", search)\n\n# Test 1: Profile endpoint\nresp = app.handle({\n    \"path\": \"/profile\",\n    \"headers\": {\"Authorization\": \"Bearer alice\", \"Accept\": \"text/html\"},\n})\nassert resp[\"status\"] == 200, f\"Profile status: {resp}\"\nassert resp[\"body\"][\"name\"] == \"alice\", f\"Profile body: {resp['body']}\"\n\n# Test 2: Settings should preserve Accept header\nresp2 = app.handle({\n    \"path\": \"/settings\",\n    \"headers\": {\"Authorization\": \"Bearer bob\", \"Accept\": \"text/html\"},\n})\nassert resp2[\"status\"] == 200\n# The Accept header should survive middleware\nassert resp2[\"body\"][\"format\"] == \"text/html\", \\\n    f\"Accept header lost: {resp2['body']['format']} (middleware overwrote headers?)\"\n\n# Test 3: URL with encoded spaces\nresp3 = app.handle({\n    \"path\": \"/search\",\n    \"headers\": {\"Authorization\": \"Bearer carol\"},\n    \"query\": \"hello%20world\",\n})\nassert resp3[\"status\"] == 200\n\nprint(\"PASSED\")\n",
+      "tasks/t2/loader.py": "\"\"\"Data loader — reads CSV-like data.\"\"\"\n\ndef load_records(text):\n    \"\"\"Parse text data into list of dicts.\"\"\"\n    lines = text.strip().split(\"\\n\")\n    if not lines:\n        return []\n    headers = [h.strip() for h in lines[0].split(\",\")]\n    records = []\n    for line in lines[1:]:\n        values = [v.strip() for v in line.split(\",\")]\n        # Bug: skips rows where any field is empty — should keep them\n        if not all(values):\n            continue\n        record = dict(zip(headers, values))\n        records.append(record)\n    return records\n",
+      "tasks/t2/transforms.py": "\"\"\"Data transformations.\"\"\"\n\ndef groupby(records, key):\n    \"\"\"Group records by a key field. Returns dict of key_value -> [records].\"\"\"\n    groups = {}\n    for record in records:\n        k = record.get(key, \"\")\n        if k not in groups:\n            groups[k] = []\n        groups[k].append(record)\n    return groups\n\ndef aggregate(groups, field, func=\"sum\"):\n    \"\"\"Aggregate a numeric field within each group.\"\"\"\n    result = {}\n    for key, records in groups.items():\n        values = []\n        for r in records:\n            val = r.get(field, \"0\")\n            try:\n                # Bug: modifies the original record dict!\n                r[field] = float(val)\n                values.append(r[field])\n            except (ValueError, TypeError):\n                continue\n        if func == \"sum\":\n            result[key] = sum(values)\n        elif func == \"avg\":\n            result[key] = sum(values) / len(values) if values else 0\n        elif func == \"count\":\n            result[key] = len(values)\n    return result\n",
+      "tasks/t2/aggregator.py": "\"\"\"High-level aggregation pipeline.\"\"\"\nfrom loader import load_records\nfrom transforms import groupby, aggregate\n\ndef summarize(data_text, group_key, agg_field, agg_func=\"sum\"):\n    \"\"\"Load data, group it, and aggregate.\"\"\"\n    records = load_records(data_text)\n    groups = groupby(records, group_key)\n    return aggregate(groups, agg_field, agg_func)\n",
+      "tasks/t2/formatter.py": "\"\"\"Output formatting — no bugs here.\"\"\"\n\ndef format_summary(summary, title=\"Summary\"):\n    lines = [title, \"=\" * len(title)]\n    for key, value in sorted(summary.items()):\n        if isinstance(value, float):\n            lines.append(f\"  {key}: {value:.2f}\")\n        else:\n            lines.append(f\"  {key}: {value}\")\n    return \"\\n\".join(lines)\n",
+      "tasks/t2/test_pipeline.py": "from aggregator import summarize\nfrom loader import load_records\n\nDATA = \"\"\"department,name,salary\nEngineering,Alice,90000\nEngineering,Bob,85000\nMarketing,Carol,70000\nMarketing,,65000\nEngineering,Eve,95000\"\"\"\n\n# Test 1: Row with empty name should still be counted\nrecords = load_records(DATA)\nassert len(records) == 5, f\"Should have 5 records (empty name is valid): got {len(records)}\"\n\n# Test 2: Sum salaries by department\nresult = summarize(DATA, \"department\", \"salary\", \"sum\")\nassert result.get(\"Engineering\") == 270000, f\"Eng sum: {result.get('Engineering')}\"\nassert result.get(\"Marketing\") == 135000, f\"Mkt sum: {result.get('Marketing')}\"\n\n# Test 3: Running summarize twice should give same results (no mutation)\nresult2 = summarize(DATA, \"department\", \"salary\", \"sum\")\nassert result2 == result, f\"Second run differs: {result2} != {result}\"\n\n# Test 4: Average\navg_result = summarize(DATA, \"department\", \"salary\", \"avg\")\nassert avg_result.get(\"Engineering\") == 90000, f\"Eng avg: {avg_result.get('Engineering')}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t3/notification.py": "\"\"\"Notification types and sending.\"\"\"\n\nclass Notification:\n    def __init__(self, user, message, channel=\"email\"):\n        self.user = user\n        self.message = message\n        self.channel = channel\n        self.sent = False\n\n    def send(self):\n        self.sent = True\n        return True\n",
+      "tasks/t3/scheduler.py": "\"\"\"Schedule-based notification triggering.\"\"\"\n\ndef parse_cron(expr):\n    \"\"\"Parse simple cron-like expression.\n    Supports: number, */N (every N), * (every)\n    Returns a function that checks if a given minute matches.\n    \"\"\"\n    if expr == \"*\":\n        return lambda minute: True\n    if expr.startswith(\"*/\"):\n        # Bug: \"*/5\" should match 0,5,10,15... but this checks == instead of %\n        interval = int(expr[2:])\n        return lambda minute: minute == interval\n    try:\n        n = int(expr)\n        return lambda minute: minute == n\n    except ValueError:\n        return lambda minute: False\n\nclass ScheduledTask:\n    def __init__(self, name, cron_expr, action):\n        self.name = name\n        self.matcher = parse_cron(cron_expr)\n        self.action = action\n\n    def should_run(self, minute):\n        return self.matcher(minute)\n\n    def run(self, minute):\n        if self.should_run(minute):\n            return self.action()\n        return None\n",
+      "tasks/t3/filters.py": "\"\"\"Notification filtering — rate limits, preferences.\"\"\"\n\nclass RateLimiter:\n    def __init__(self, max_per_window, window_minutes=60):\n        self.max = max_per_window\n        self.window = window_minutes\n        self.history = {}  # user -> [timestamps]\n\n    def allow(self, user, current_minute):\n        if user not in self.history:\n            self.history[user] = []\n        # Clean old entries\n        # Bug: off-by-one — uses > instead of >= for window boundary\n        cutoff = current_minute - self.window\n        self.history[user] = [t for t in self.history[user] if t > cutoff]\n        if len(self.history[user]) >= self.max:\n            return False\n        self.history[user].append(current_minute)\n        return True\n\nclass PreferenceFilter:\n    def __init__(self, preferences=None):\n        self.prefs = preferences or {}\n\n    def allows(self, user, channel):\n        user_prefs = self.prefs.get(user, {})\n        return user_prefs.get(channel, True)  # Default: allow\n",
+      "tasks/t3/dispatcher.py": "\"\"\"Dispatch notifications through filters.\"\"\"\nfrom filters import RateLimiter, PreferenceFilter\n\nclass Dispatcher:\n    def __init__(self, rate_limit=5, window=60, preferences=None):\n        self.limiter = RateLimiter(rate_limit, window)\n        self.pref_filter = PreferenceFilter(preferences)\n        self.sent = []\n        self.blocked = []\n\n    def dispatch(self, notification, current_minute=0):\n        if not self.pref_filter.allows(notification.user, notification.channel):\n            self.blocked.append((\"preference\", notification))\n            return False\n        if not self.limiter.allow(notification.user, current_minute):\n            self.blocked.append((\"rate_limit\", notification))\n            return False\n        notification.send()\n        self.sent.append(notification)\n        return True\n",
+      "tasks/t3/engine.py": "\"\"\"Notification engine — ties scheduler + dispatcher together.\"\"\"\nfrom scheduler import ScheduledTask\nfrom dispatcher import Dispatcher\nfrom notification import Notification\n\nclass NotificationEngine:\n    def __init__(self, dispatcher):\n        self.dispatcher = dispatcher\n        self.tasks = []\n\n    def add_scheduled(self, name, cron_expr, user, message, channel=\"email\"):\n        def action():\n            n = Notification(user, message, channel)\n            return self.dispatcher.dispatch(n)\n        self.tasks.append(ScheduledTask(name, cron_expr, action))\n\n    def tick(self, minute):\n        \"\"\"Process one minute tick.\"\"\"\n        results = []\n        for task in self.tasks:\n            result = task.run(minute)\n            if result is not None:\n                results.append((task.name, result))\n        return results\n",
+      "tasks/t3/test_notifications.py": "from engine import NotificationEngine\nfrom dispatcher import Dispatcher\nfrom scheduler import parse_cron\n\n# Test cron parsing\nevery5 = parse_cron(\"*/5\")\nassert every5(0) == True, \"*/5 should match minute 0\"\nassert every5(5) == True, \"*/5 should match minute 5\"\nassert every5(10) == True, \"*/5 should match minute 10\"\nassert every5(3) == False, \"*/5 should not match minute 3\"\n\nat_15 = parse_cron(\"15\")\nassert at_15(15) == True\nassert at_15(16) == False\n\n# Test notification engine with scheduled tasks\ndispatcher = Dispatcher(rate_limit=3, window=60)\nengine = NotificationEngine(dispatcher)\nengine.add_scheduled(\"health_check\", \"*/10\", \"ops-team\", \"System OK\")\n\n# Run for 30 minutes — should fire at 0, 10, 20\nfor minute in range(30):\n    engine.tick(minute)\n\nassert len(dispatcher.sent) == 3, \\\n    f\"Should send 3 notifications (at min 0,10,20): got {len(dispatcher.sent)}\"\n\n# Test rate limiting\ndispatcher2 = Dispatcher(rate_limit=2, window=10)\nengine2 = NotificationEngine(dispatcher2)\nengine2.add_scheduled(\"alert\", \"*/1\", \"admin\", \"Alert!\")\n\n# Run for 5 minutes — every minute, but rate limited to 2 per 10min window\nfor minute in range(5):\n    engine2.tick(minute)\n\nassert len(dispatcher2.sent) == 2, \\\n    f\"Rate limit should cap at 2: got {len(dispatcher2.sent)}\"\nassert len(dispatcher2.blocked) == 3, \\\n    f\"Should block 3: got {len(dispatcher2.blocked)}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t4/config_parser.py": "\"\"\"Build configuration parser.\"\"\"\n\ndef parse_config(text):\n    \"\"\"Parse build config file.\n    Format:\n      [target_name]\n      deps = dep1, dep2\n      command = build_command\n      # comment lines\n    \"\"\"\n    targets = {}\n    current = None\n    for line in text.strip().split(\"\\n\"):\n        line = line.strip()\n        if not line or line.startswith(\"#\"):\n            continue\n        if line.startswith(\"[\") and line.endswith(\"]\"):\n            current = line[1:-1]\n            targets[current] = {\"deps\": [], \"command\": \"\"}\n            continue\n        if current and \"=\" in line:\n            key, value = line.split(\"=\", 1)\n            key = key.strip()\n            value = value.strip()\n            if key == \"deps\":\n                # Bug: doesn't handle empty deps (splits \"\" into [\"\"])\n                deps = [d.strip() for d in value.split(\",\")]\n                targets[current][\"deps\"] = deps\n            elif key == \"command\":\n                targets[current][\"command\"] = value\n    return targets\n",
+      "tasks/t4/resolver.py": "\"\"\"Dependency resolver with topological sort.\"\"\"\n\ndef resolve_order(targets):\n    \"\"\"Return build order respecting dependencies.\n    Raises ValueError on circular dependencies.\n    \"\"\"\n    order = []\n    state = {}  # name -> \"unvisited\", \"visiting\", \"visited\"\n\n    for name in targets:\n        state[name] = \"unvisited\"\n\n    def visit(name):\n        if name not in state:\n            return  # External dependency, skip\n        if state[name] == \"visited\":\n            return\n        if state[name] == \"visiting\":\n            raise ValueError(f\"Circular dependency involving {name}\")\n\n        state[name] = \"visiting\"\n        for dep in targets[name][\"deps\"]:\n            visit(dep)\n        # Bug: sets to \"visited\" but doesn't add to order here\n        # Instead adds to order first, THEN marks visited\n        # This means if A depends on B and C, and B also depends on C,\n        # C might appear twice in the order\n        order.append(name)\n        state[name] = \"visited\"\n\n    for name in targets:\n        visit(name)\n\n    return order\n",
+      "tasks/t4/builder.py": "\"\"\"Build executor.\"\"\"\nfrom resolver import resolve_order\n\nclass Builder:\n    def __init__(self, targets):\n        self.targets = targets\n        self.built = []\n        self.log = []\n\n    def build_all(self):\n        try:\n            order = resolve_order(self.targets)\n        except ValueError as e:\n            return False, str(e)\n\n        for name in order:\n            if name not in self.targets:\n                continue  # Skip external deps\n            cmd = self.targets[name].get(\"command\", \"\")\n            self.log.append(f\"Building {name}: {cmd}\")\n            self.built.append(name)\n\n        return True, self.built\n\n    def build_target(self, name):\n        if name not in self.targets:\n            return False, f\"Unknown target: {name}\"\n        # Build deps first\n        for dep in self.targets[name][\"deps\"]:\n            if dep in self.targets and dep not in self.built:\n                self.build_target(dep)\n        self.built.append(name)\n        return True, name\n",
+      "tasks/t4/cache.py": "\"\"\"Build cache — no bugs here.\"\"\"\n\nclass BuildCache:\n    def __init__(self):\n        self._cache = {}\n\n    def is_cached(self, target, deps_hash):\n        return self._cache.get(target) == deps_hash\n\n    def update(self, target, deps_hash):\n        self._cache[target] = deps_hash\n\n    def invalidate(self, target):\n        self._cache.pop(target, None)\n\n    def clear(self):\n        self._cache.clear()\n",
+      "tasks/t4/test_build.py": "from config_parser import parse_config\nfrom builder import Builder\nfrom resolver import resolve_order\n\n# Test config parsing\nconfig_text = \"\"\"\n[app]\ndeps = lib, utils\ncommand = gcc -o app main.c\n\n[lib]\ndeps =\ncommand = gcc -c lib.c\n\n[utils]\ndeps = lib\ncommand = gcc -c utils.c\n\"\"\"\n\ntargets = parse_config(config_text)\nassert \"app\" in targets\nassert \"lib\" in targets\nassert \"utils\" in targets\n# lib has no deps — should be empty list, not [\"\"]\nassert targets[\"lib\"][\"deps\"] == [] or targets[\"lib\"][\"deps\"] == [\"\"], \\\n    f\"Lib deps: {targets['lib']['deps']}\"\nassert targets[\"lib\"][\"deps\"] == [], \\\n    f\"Empty deps should be [] not ['']: {targets['lib']['deps']}\"\n\n# Test dependency resolution\norder = resolve_order(targets)\nassert order.index(\"lib\") < order.index(\"utils\"), f\"lib before utils: {order}\"\nassert order.index(\"utils\") < order.index(\"app\"), f\"utils before app: {order}\"\n# No duplicates\nassert len(order) == len(set(order)), f\"Duplicates in order: {order}\"\n\n# Test builder\nbuilder = Builder(targets)\nok, built = builder.build_all()\nassert ok, f\"Build failed: {built}\"\nassert len(built) == 3, f\"Should build 3 targets: {built}\"\nassert built.index(\"lib\") < built.index(\"app\"), f\"Wrong order: {built}\"\n\n# Test circular dependency detection\ncircular = {\n    \"a\": {\"deps\": [\"b\"], \"command\": \"\"},\n    \"b\": {\"deps\": [\"c\"], \"command\": \"\"},\n    \"c\": {\"deps\": [\"a\"], \"command\": \"\"},\n}\ntry:\n    resolve_order(circular)\n    assert False, \"Should detect circular dependency\"\nexcept ValueError:\n    pass\n\nprint(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T15:13:13.943092+00:00",
+  "finished_at": "2026-03-21T15:16:23.867236+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 32,
+  "trials_b_count": 32
+}

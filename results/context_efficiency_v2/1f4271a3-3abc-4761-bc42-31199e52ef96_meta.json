@@ -1,0 +1,118 @@
+{
+  "run_id": "1f4271a3-3abc-4761-bc42-31199e52ef96",
+  "experiment": {
+    "name": "context_efficiency_v2",
+    "description": "Context efficiency v2: navigation guidance (file map + bug hints) vs unguided exploration. 4 tasks from 2-file to 6-file projects. Tests whether compressed context saves exploration turns.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "unguided (no info) vs guided (file map + exact bug descriptions)"
+    },
+    "agent_a": {
+      "name": "unguided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Fix the bugs in the project. Run the test to see what fails, then fix it.\nYou have limited turns — be efficient.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 8,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "guided",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "Fix the bugs in the project. Here is navigation guidance to save you time:\n\nFOR TASK T1 (2 files):\n- Bug in converter.py: the Celsius-to-Fahrenheit formula is wrong\n- test_converter.py is the test (ground truth)\n\nFOR TASK T2 (3 files):\n- Bug in stats.py: median calculation is wrong for even-length lists\n- Bug in formatter.py: percentage formatting rounds incorrectly\n- test_stats.py is the test\n\nFOR TASK T3 (4 files):\n- Bug in auth.py: password hash comparison is case-sensitive when it shouldn't be\n- Bug in session.py: session expiry check uses wrong comparison operator\n- test_auth.py is the test\n\nFOR TASK T4 (6 files):\n- Bug in validators.py: stock validation checks wrong condition\n- Bug in services.py: cancel_order subtracts stock instead of adding\n- Bug in utils.py: format_currency loses negative sign\n- test_app.py is the test\n\nUse this map to go directly to the buggy files. Don't waste turns exploring.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 8,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t1/. Run `cd tasks/t1 && python test_converter.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "2-file",
+          "simple"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t2/ (check stats.py and formatter.py). Run `cd tasks/t2 && python test_stats.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "3-file",
+          "dual-bug"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t3/ (4-file auth system). Run `cd tasks/t3 && python test_auth.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "4-file",
+          "auth",
+          "dual-bug"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix bugs in tasks/t4/ (6-file e-commerce). Run `cd tasks/t4 && python test_app.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "very_hard",
+        "tags": [
+          "6-file",
+          "three-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "context-efficiency",
+      "navigation",
+      "codebase-size",
+      "research"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/converter.py": "def celsius_to_fahrenheit(c):\n    return c * 9/5 + 32\n\ndef fahrenheit_to_celsius(f):\n    return (f - 32) * 9/5  # Bug: should be * 5/9\n\ndef km_to_miles(km):\n    return km * 0.621371\n\ndef miles_to_km(miles):\n    return miles / 0.621371\n",
+      "tasks/t1/test_converter.py": "from converter import *\nassert celsius_to_fahrenheit(0) == 32\nassert celsius_to_fahrenheit(100) == 212\nassert abs(fahrenheit_to_celsius(212) - 100) < 0.01, f\"F->C: {fahrenheit_to_celsius(212)}\"\nassert abs(fahrenheit_to_celsius(32) - 0) < 0.01\nassert abs(km_to_miles(1) - 0.621371) < 0.001\nassert abs(miles_to_km(1) - 1.60934) < 0.01\nprint(\"PASSED\")\n",
+      "tasks/t2/stats.py": "def mean(data):\n    return sum(data) / len(data)\n\ndef median(data):\n    sorted_data = sorted(data)\n    n = len(sorted_data)\n    if n % 2 == 1:\n        return sorted_data[n // 2]\n    else:\n        # Bug: integer division gives wrong index for even-length\n        mid = n // 2\n        return (sorted_data[mid] + sorted_data[mid + 1]) / 2  # Bug: should be mid-1 and mid\n\ndef std_dev(data):\n    avg = mean(data)\n    variance = sum((x - avg) ** 2 for x in data) / len(data)\n    return variance ** 0.5\n",
+      "tasks/t2/formatter.py": "def format_pct(value, decimals=1):\n    \"\"\"Format as percentage string.\"\"\"\n    # Bug: multiplies by 100 twice (once here, once by caller expectation)\n    return f\"{value * 100:.{decimals}f}%\"\n\ndef format_table(headers, rows):\n    \"\"\"Format as aligned text table.\"\"\"\n    widths = [max(len(str(h)), max(len(str(r[i])) for r in rows))\n              for i, h in enumerate(headers)]\n    header_line = \" | \".join(h.ljust(w) for h, w in zip(headers, widths))\n    separator = \"-+-\".join(\"-\" * w for w in widths)\n    data_lines = [\" | \".join(str(r[i]).ljust(w) for i, w in enumerate(widths))\n                  for r in rows]\n    return \"\\n\".join([header_line, separator] + data_lines)\n",
+      "tasks/t2/test_stats.py": "from stats import mean, median, std_dev\nfrom formatter import format_pct, format_table\n\n# Mean\nassert mean([1, 2, 3, 4, 5]) == 3.0\n\n# Median odd\nassert median([3, 1, 2]) == 2\n\n# Median even\nassert median([1, 2, 3, 4]) == 2.5, f\"Median even: {median([1, 2, 3, 4])}\"\n\n# Std dev\nassert abs(std_dev([2, 4, 4, 4, 5, 5, 7, 9]) - 2.0) < 0.01\n\n# format_pct: 0.15 should be \"15.0%\"\nassert format_pct(0.15) == \"15.0%\", f\"Pct: {format_pct(0.15)}\"\nassert format_pct(0.5) == \"50.0%\", f\"Pct: {format_pct(0.5)}\"\nassert format_pct(1.0) == \"100.0%\", f\"Pct: {format_pct(1.0)}\"\n\n# format_table\ntable = format_table([\"Name\", \"Score\"], [[\"Alice\", 95], [\"Bob\", 87]])\nassert \"Alice\" in table\nassert \"Bob\" in table\n\nprint(\"PASSED\")\n",
+      "tasks/t3/hasher.py": "import hashlib\n\ndef hash_password(password):\n    \"\"\"Hash password with SHA256.\"\"\"\n    return hashlib.sha256(password.encode()).hexdigest()\n\ndef verify_password(password, hashed):\n    \"\"\"Verify password against hash.\"\"\"\n    return hash_password(password) == hashed\n",
+      "tasks/t3/auth.py": "from hasher import hash_password, verify_password\n\nclass AuthService:\n    def __init__(self):\n        self.users = {}  # username -> hashed_password\n\n    def register(self, username, password):\n        if username in self.users:\n            return False, \"Username taken\"\n        # Bug: stores hash in uppercase, but verify compares lowercase\n        self.users[username] = hash_password(password).upper()\n        return True, None\n\n    def login(self, username, password):\n        if username not in self.users:\n            return False, \"User not found\"\n        stored = self.users[username]\n        if not verify_password(password, stored):\n            return False, \"Wrong password\"\n        return True, None\n",
+      "tasks/t3/session.py": "import time\n\nclass SessionManager:\n    def __init__(self, ttl=3600):\n        self.sessions = {}  # token -> (username, expires_at)\n        self.ttl = ttl\n\n    def create(self, username, now=None):\n        now = now or time.time()\n        token = f\"sess_{username}_{int(now)}\"\n        self.sessions[token] = (username, now + self.ttl)\n        return token\n\n    def validate(self, token, now=None):\n        now = now or time.time()\n        if token not in self.sessions:\n            return None, \"Invalid session\"\n        username, expires = self.sessions[token]\n        # Bug: > should be < (session is valid when now < expires)\n        if now > expires:\n            return username, None  # This returns valid for expired sessions!\n        del self.sessions[token]\n        return None, \"Session expired\"\n\n    def revoke(self, token):\n        self.sessions.pop(token, None)\n",
+      "tasks/t3/test_auth.py": "from auth import AuthService\nfrom session import SessionManager\n\n# Registration and login\nauth = AuthService()\nok, err = auth.register(\"alice\", \"secret123\")\nassert ok, f\"Register failed: {err}\"\n\nok2, err2 = auth.login(\"alice\", \"secret123\")\nassert ok2, f\"Login failed: {err2}\"\n\nok3, err3 = auth.login(\"alice\", \"wrong\")\nassert not ok3, \"Wrong password should fail\"\n\n# Duplicate registration\nok4, err4 = auth.register(\"alice\", \"other\")\nassert not ok4, \"Duplicate should fail\"\n\n# Sessions\nsm = SessionManager(ttl=3600)\ntoken = sm.create(\"alice\", now=1000)\nassert token is not None\n\n# Valid session (not expired)\nuser, err = sm.validate(token, now=2000)\nassert user == \"alice\", f\"Valid session failed: user={user}, err={err}\"\n\n# Expired session\ntoken2 = sm.create(\"bob\", now=1000)\nuser2, err2 = sm.validate(token2, now=5000)\nassert user2 is None, f\"Expired session should fail: user={user2}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t4/models.py": "from dataclasses import dataclass, field\nfrom enum import Enum\n\nclass OrderStatus(Enum):\n    PENDING = \"pending\"\n    CONFIRMED = \"confirmed\"\n    CANCELLED = \"cancelled\"\n\n@dataclass\nclass User:\n    id: int\n    name: str\n    email: str\n    is_premium: bool = False\n\n@dataclass\nclass Product:\n    id: int\n    name: str\n    price: float\n    stock: int\n\n@dataclass\nclass OrderItem:\n    product: Product\n    quantity: int\n\n    @property\n    def subtotal(self):\n        return self.product.price * self.quantity\n\n@dataclass\nclass Order:\n    id: int\n    user: User\n    items: list = field(default_factory=list)\n    status: OrderStatus = OrderStatus.PENDING\n    discount_pct: float = 0.0\n\n    def add_item(self, product, quantity):\n        self.items.append(OrderItem(product, quantity))\n\n    @property\n    def subtotal(self):\n        return sum(item.subtotal for item in self.items)\n\n    @property\n    def total(self):\n        return round(self.subtotal * (1 - self.discount_pct / 100), 2)\n",
+      "tasks/t4/repository.py": "class Repository:\n    def __init__(self):\n        self.users = {}\n        self.orders = {}\n        self._uid = 1\n        self._oid = 1\n\n    def next_user_id(self):\n        uid = self._uid; self._uid += 1; return uid\n\n    def next_order_id(self):\n        oid = self._oid; self._oid += 1; return oid\n\n    def save_user(self, u): self.users[u.id] = u\n    def save_order(self, o): self.orders[o.id] = o\n",
+      "tasks/t4/validators.py": "def validate_order(order):\n    errors = []\n    if not order.items:\n        errors.append(\"Empty order\")\n    for item in order.items:\n        if item.quantity <= 0:\n            errors.append(f\"Bad qty: {item.product.name}\")\n        if item.product.stock < 0:  # Bug: should check quantity > stock\n            errors.append(f\"No stock: {item.product.name}\")\n    return len(errors) == 0, errors\n",
+      "tasks/t4/services.py": "from models import OrderStatus, Order\nfrom validators import validate_order\n\nclass OrderService:\n    def __init__(self, repo):\n        self.repo = repo\n\n    def create_order(self, user, items):\n        order = Order(id=self.repo.next_order_id(), user=user)\n        for prod, qty in items:\n            order.add_item(prod, qty)\n        if user.is_premium:\n            order.discount_pct = 10\n        return order\n\n    def confirm(self, order):\n        ok, errs = validate_order(order)\n        if not ok:\n            return False, errs\n        for item in order.items:\n            item.product.stock -= item.quantity\n        order.status = OrderStatus.CONFIRMED\n        self.repo.save_order(order)\n        return True, []\n\n    def cancel(self, order):\n        if order.status != OrderStatus.CONFIRMED:\n            return False, [\"Not confirmed\"]\n        for item in order.items:\n            item.product.stock -= item.quantity  # Bug: should += to restore\n        order.status = OrderStatus.CANCELLED\n        self.repo.save_order(order)\n        return True, []\n",
+      "tasks/t4/utils.py": "def format_currency(amount):\n    return f\"${abs(amount):.2f}\"  # Bug: loses negative sign\n",
+      "tasks/t4/test_app.py": "from models import User, Product, OrderStatus\nfrom services import OrderService\nfrom repository import Repository\nfrom utils import format_currency\n\nrepo = Repository()\nsvc = OrderService(repo)\nuser = User(1, \"Alice\", \"a@b.com\")\nlaptop = Product(1, \"Laptop\", 999.99, stock=10)\nkbd = Product(2, \"Keyboard\", 79.99, stock=5)\n\n# Create + confirm\norder = svc.create_order(user, [(laptop, 2)])\nok, errs = svc.confirm(order)\nassert ok, f\"Confirm: {errs}\"\nassert laptop.stock == 8\n\n# Stock validation\nbig = svc.create_order(user, [(kbd, 10)])\nok2, errs2 = svc.confirm(big)\nassert not ok2, \"Should fail: 10 > 5 stock\"\n\n# Cancel restores stock\npre = laptop.stock\nsvc.cancel(order)\nassert laptop.stock == pre + 2, f\"Stock: {laptop.stock} != {pre+2}\"\n\n# Currency\nassert format_currency(19.99) == \"$19.99\"\nassert format_currency(-5.50) == \"-$5.50\", f\"Neg: {format_currency(-5.50)}\"\n\nprint(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T14:31:24.063232+00:00",
+  "finished_at": "2026-03-21T14:33:44.221348+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 20,
+  "trials_b_count": 20
+}

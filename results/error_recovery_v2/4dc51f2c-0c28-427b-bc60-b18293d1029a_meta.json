@@ -1,0 +1,136 @@
+{
+  "run_id": "4dc51f2c-0c28-427b-bc60-b18293d1029a",
+  "experiment": {
+    "name": "error_recovery_v2",
+    "description": "Error recovery v2: incremental fix (one bug at a time, test between) vs batch fix (find ALL bugs, fix ALL at once). Extreme prompts with FORBIDDEN constraints. Tight 6-turn budget, cascading bug tasks.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "incremental (fix-test-fix-test) vs batch (read-all, fix-all, test-once)"
+    },
+    "agent_a": {
+      "name": "incremental_fix",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\n1. Read the test file FIRST to understand what's expected\n2. Read ONE source file\n3. Find the FIRST bug you see\n4. Fix ONLY that one bug\n5. Run the test immediately\n6. If the test still fails, go back to step 2 and find the NEXT bug\n7. Repeat: fix ONE bug → test → fix NEXT bug → test\n\nCRITICAL CONSTRAINTS:\n- NEVER fix more than one bug per Edit call\n- ALWAYS run the test between each fix\n- You are FORBIDDEN from fixing multiple bugs before testing\n- Each fix-then-test cycle gives you feedback for the next fix\n\nThis incremental approach ensures each fix is validated before moving on.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 6,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "batch_fix",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\n1. Read ALL source files in the task directory (not test files)\n2. Read the test file to understand expected behavior\n3. Identify EVERY bug across all files — list them all\n4. Fix ALL bugs in a single pass (one Edit per file, but fix everything)\n5. Run the test ONCE at the end to verify\n\nCRITICAL CONSTRAINTS:\n- You MUST read every .py file before making ANY edit\n- You are FORBIDDEN from running the test before all fixes are applied\n- Do NOT run partial tests — fix EVERYTHING first, test ONCE at the end\n- Your first Bash call should be the final verification test\n\nThis comprehensive approach ensures you understand ALL interactions\nbetween bugs before touching any code.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 6,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/ (inventory.py). Run `cd tasks/t1 && python test_inventory.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "cascading",
+          "operand-swap"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t2/ (limiter.py). Run `cd tasks/t2 && python test_limiter.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "interacting",
+          "missing-call"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/ (lru_cache.py). Run `cd tasks/t3 && python test_lru.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "cascading",
+          "direction"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t4/ (calc.py). Run `cd tasks/t4 && python test_calc.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "multi-bug",
+          "parser"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t5/ (transaction.py). Run `cd tasks/t5 && python test_transaction.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "deep-copy",
+          "reference"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t6/ (markdown.py). Run `cd tasks/t6 && python test_markdown.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "cascading",
+          "regex"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "error-recovery",
+      "incremental-vs-batch",
+      "extreme-prompts",
+      "research"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/inventory.py": "\"\"\"Inventory management with auto-reorder.\"\"\"\n\nclass Product:\n    def __init__(self, name, stock, reserved=0, reorder_point=10):\n        self.name = name\n        self.stock = stock\n        self.reserved = reserved\n        self.reorder_point = reorder_point\n\nclass Inventory:\n    def __init__(self):\n        self.products = {}\n        self.reorder_queue = []\n\n    def add_product(self, product):\n        self.products[product.name] = product\n\n    def available(self, name):\n        p = self.products[name]\n        return p.reserved - p.stock  # Bug A: operands swapped\n\n    def reserve(self, name, qty):\n        avail = self.available(name)\n        if qty > avail:\n            return False\n        self.products[name].reserved += qty\n        self._check_reorder(name)\n        return True\n\n    def _check_reorder(self, name):\n        p = self.products[name]\n        available = p.stock - p.reserved\n        if available > p.reorder_point:  # Bug B: > should be <\n            if name not in self.reorder_queue:\n                self.reorder_queue.append(name)\n\n    def fulfill(self, name, qty):\n        p = self.products[name]\n        if qty > p.reserved:\n            raise ValueError(f\"Cannot fulfill {qty}, only {p.reserved} reserved\")\n        p.stock -= qty\n        p.reserved -= qty\n        self._check_reorder(name)\n",
+      "tasks/t1/test_inventory.py": "from inventory import Inventory, Product\n\ninv = Inventory()\ninv.add_product(Product(\"Widget\", stock=50, reserved=0, reorder_point=10))\nassert inv.available(\"Widget\") == 50, f\"Available: {inv.available('Widget')}\"\nassert inv.reserve(\"Widget\", 20) == True\nassert inv.available(\"Widget\") == 30, f\"After reserve: {inv.available('Widget')}\"\nassert inv.reserve(\"Widget\", 35) == False\n\ninv.fulfill(\"Widget\", 10)\nassert inv.available(\"Widget\") == 20\n\ninv2 = Inventory()\ninv2.add_product(Product(\"Gadget\", stock=15, reserved=0, reorder_point=10))\ninv2.reserve(\"Gadget\", 8)\nassert \"Gadget\" in inv2.reorder_queue, f\"Should reorder: avail=7 < 10, queue={inv2.reorder_queue}\"\n\ninv3 = Inventory()\ninv3.add_product(Product(\"Thing\", stock=100, reserved=0, reorder_point=10))\ninv3.reserve(\"Thing\", 1)\nassert \"Thing\" not in inv3.reorder_queue, f\"Should NOT reorder: avail=99 > 10\"\n\nprint(\"PASSED\")\n",
+      "tasks/t2/limiter.py": "class RateLimiter:\n    def __init__(self, rate, burst, now=0):\n        self.rate = rate\n        self.burst = burst\n        self.tokens = burst\n        self.last_time = now\n\n    def _refill(self, now):\n        elapsed = now - self.last_time\n        self.tokens += elapsed * self.rate  # Bug A: no burst cap\n        self.last_time = now\n\n    def allow(self, now, cost=1):\n        # Bug B: doesn't call _refill!\n        if self.tokens >= cost:\n            self.tokens -= cost\n            return True\n        return False\n\n    def wait_time(self, now, cost=1):\n        self._refill(now)\n        if self.tokens >= cost:\n            return 0.0\n        return (cost - self.tokens) / self.rate\n",
+      "tasks/t2/test_limiter.py": "from limiter import RateLimiter\n\nrl = RateLimiter(rate=10, burst=5, now=0)\nfor i in range(5):\n    assert rl.allow(now=0), f\"Should allow {i+1}\"\nassert not rl.allow(now=0), \"Should deny when empty\"\n\nrl2 = RateLimiter(rate=10, burst=5, now=0)\nfor _ in range(5):\n    rl2.allow(now=0)\nassert rl2.allow(now=1), \"Should allow after refill\"\n\nrl3 = RateLimiter(rate=10, burst=5, now=0)\nfor _ in range(5):\n    rl3.allow(now=0)\nfor i in range(5):\n    assert rl3.allow(now=10), f\"Should allow {i+1} after long wait\"\nassert not rl3.allow(now=10), \"Burst cap: only 5 even after 10s\"\n\nrl4 = RateLimiter(rate=10, burst=5, now=0)\nfor _ in range(5):\n    rl4.allow(now=0)\nwt = rl4.wait_time(now=0, cost=3)\nassert abs(wt - 0.3) < 0.01, f\"Wait: {wt}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t3/lru_cache.py": "from collections import OrderedDict\n\nclass LRUCache:\n    def __init__(self, max_size=3):\n        self.max_size = max_size\n        self._store = OrderedDict()\n        self._hits = 0\n        self._misses = 0\n\n    def get(self, key):\n        if key in self._store:\n            self._hits += 1\n            self._store.move_to_end(key)\n            return self._store[key]\n        self._misses += 1\n        return None\n\n    def put(self, key, value):\n        if key in self._store:\n            self._store[key] = value\n            self._store.move_to_end(key)\n            return\n        if len(self._store) >= self.max_size:\n            self._store.popitem(last=True)  # Bug A: removes MRU not LRU\n        self._store[key] = value\n\n    def stats(self):\n        total = self._hits + self._misses\n        return {\n            \"hits\": self._hits,\n            \"misses\": self._misses,\n            \"size\": len(self._store),\n            \"hit_rate\": self._misses / total if total > 0 else 0.0,  # Bug B: misses/total not hits/total\n        }\n",
+      "tasks/t3/test_lru.py": "from lru_cache import LRUCache\n\nc = LRUCache(max_size=3)\nc.put(\"a\", 1)\nc.put(\"b\", 2)\nc.put(\"c\", 3)\nassert c.get(\"a\") == 1\nassert c.get(\"b\") == 2\n\nc.put(\"d\", 4)\nassert c.get(\"c\") is None, f\"c should be evicted (LRU), got {c.get('c')}\"\nassert c.get(\"a\") == 1, \"a should survive\"\nassert c.get(\"b\") == 2, \"b should survive\"\nassert c.get(\"d\") == 4, \"d should exist\"\n\nc2 = LRUCache(max_size=2)\nc2.put(\"x\", 1)\nc2.get(\"x\")\nc2.get(\"x\")\nc2.get(\"y\")\ns = c2.stats()\nassert s[\"hits\"] == 2\nassert s[\"misses\"] == 1\nassert abs(s[\"hit_rate\"] - 2/3) < 0.01, f\"Hit rate: {s['hit_rate']}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t4/calc.py": "import math\n\nclass Calculator:\n    def __init__(self):\n        self.variables = {}\n        self.functions = {\"abs\": abs, \"sqrt\": math.sqrt, \"max\": max, \"min\": min}\n\n    def evaluate(self, expr):\n        tokens = self._tokenize(expr)\n        pos = [0]\n        result = self._parse_expr(tokens, pos)\n        if pos[0] < len(tokens):\n            raise SyntaxError(f\"Unexpected: {tokens[pos[0]]}\")\n        return result\n\n    def _tokenize(self, expr):\n        tokens = []\n        i = 0\n        while i < len(expr):\n            if expr[i].isspace():\n                i += 1\n            elif expr[i].isdigit() or expr[i] == '.':\n                j = i\n                while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):\n                    j += 1\n                tokens.append((\"NUM\", float(expr[i:j])))\n                i = j\n            elif expr[i].isalpha() or expr[i] == '_':\n                j = i\n                while j < len(expr) and (expr[j].isalnum() or expr[j] == '_'):\n                    j += 1\n                tokens.append((\"NAME\", expr[i:j]))\n                i = j\n            elif expr[i] in '+-*/(),':\n                tokens.append((\"OP\", expr[i]))\n                i += 1\n            else:\n                raise SyntaxError(f\"Unknown: {expr[i]}\")\n        return tokens\n\n    def _parse_expr(self, tokens, pos):\n        left = self._parse_term(tokens, pos)\n        while pos[0] < len(tokens) and tokens[pos[0]][1] in ('+', '-'):\n            op = tokens[pos[0]][1]\n            pos[0] += 1\n            right = self._parse_term(tokens, pos)\n            left = left + right if op == '+' else left - right\n        return left\n\n    def _parse_term(self, tokens, pos):\n        left = self._parse_factor(tokens, pos)\n        while pos[0] < len(tokens) and tokens[pos[0]][1] in ('*', '/'):\n            op = tokens[pos[0]][1]\n            pos[0] += 1\n            right = self._parse_factor(tokens, pos)\n            left = left * right if op == '*' else left / right\n        return left\n\n    def _parse_factor(self, tokens, pos):\n        if pos[0] >= len(tokens):\n            raise SyntaxError(\"Unexpected end\")\n        tok = tokens[pos[0]]\n        if tok == (\"OP\", \"-\"):\n            pos[0] += 1\n            return -self._parse_factor(tokens, pos)\n        if tok == (\"OP\", \"(\"):\n            pos[0] += 1\n            result = self._parse_expr(tokens, pos)\n            if pos[0] >= len(tokens) or tokens[pos[0]] != (\"OP\", \")\"):\n                raise SyntaxError(\"Missing )\")\n            pos[0] += 1\n            return result\n        if tok[0] == \"NUM\":\n            pos[0] += 1\n            return tok[1]\n        if tok[0] == \"NAME\":\n            name = tok[1]\n            pos[0] += 1\n            if pos[0] < len(tokens) and tokens[pos[0]] == (\"OP\", \"(\"):\n                pos[0] += 1\n                args = []\n                if pos[0] < len(tokens) and tokens[pos[0]] != (\"OP\", \")\"):\n                    args.append(self._parse_expr(tokens, pos))\n                    while pos[0] < len(tokens) and tokens[pos[0]] == (\"OP\", \",\"):\n                        pos[0] += 1\n                        args.append(self._parse_expr(tokens, pos))\n                if pos[0] >= len(tokens) or tokens[pos[0]] != (\"OP\", \")\"):\n                    raise SyntaxError(\"Missing )\")\n                # Bug B: doesn't consume closing paren\n                if name not in self.functions:\n                    raise NameError(f\"Unknown function: {name}\")\n                return self.functions[name](*args)\n            # Bug A: variable=0 treated as undefined\n            val = self.variables.get(name)\n            if val is None:\n                raise NameError(f\"Undefined: {name}\")\n            return val\n        raise SyntaxError(f\"Unexpected: {tok}\")\n\n    def set_var(self, name, value):\n        self.variables[name] = value\n",
+      "tasks/t4/test_calc.py": "from calc import Calculator\n\nc = Calculator()\nassert c.evaluate(\"2 + 3 * 4\") == 14\nassert c.evaluate(\"(2 + 3) * 4\") == 20\n\nc.set_var(\"x\", 10)\nassert c.evaluate(\"x + 5\") == 15\nc.set_var(\"y\", 0)\nassert c.evaluate(\"y + 1\") == 1, f\"Zero var: {c.evaluate('y + 1')}\"\n\nassert c.evaluate(\"abs(-5)\") == 5\nassert c.evaluate(\"sqrt(16)\") == 4.0\nassert c.evaluate(\"max(3, 7)\") == 7\nassert c.evaluate(\"abs(-3) + sqrt(4)\") == 5.0, f\"Func in expr: {c.evaluate('abs(-3) + sqrt(4)')}\"\nassert c.evaluate(\"abs(min(-5, -3))\") == 5\n\ntry:\n    c.evaluate(\"undefined_var\")\n    assert False, \"Should raise NameError\"\nexcept NameError:\n    pass\n\nprint(\"PASSED\")\n",
+      "tasks/t5/transaction.py": "class Transaction:\n    def __init__(self, data):\n        self._data = data\n        self._savepoints = []\n        self._active = False\n\n    def begin(self):\n        self._savepoints.append(dict(self._data))  # Bug A: shallow copy\n        self._active = True\n\n    def commit(self):\n        if not self._savepoints:\n            raise RuntimeError(\"No active transaction\")\n        self._savepoints.pop()\n        if not self._savepoints:\n            self._active = False\n\n    def rollback(self):\n        if not self._savepoints:\n            raise RuntimeError(\"No active transaction\")\n        saved = self._savepoints.pop()\n        self._data = saved  # Bug B: loses external reference\n        if not self._savepoints:\n            self._active = False\n\n    @property\n    def data(self):\n        return self._data\n\n    @property\n    def active(self):\n        return self._active\n",
+      "tasks/t5/test_transaction.py": "from transaction import Transaction\n\ndata = {\"balance\": 100, \"name\": \"Alice\"}\ntx = Transaction(data)\ntx.begin()\ntx.data[\"balance\"] = 200\ntx.commit()\nassert tx.data[\"balance\"] == 200\n\ndata2 = {\"balance\": 100}\ntx2 = Transaction(data2)\ntx2.begin()\ntx2.data[\"balance\"] = 0\ntx2.rollback()\nassert tx2.data[\"balance\"] == 100, f\"Rollback: {tx2.data}\"\n\ndata3 = {\"balance\": 100, \"items\": [\"a\", \"b\"]}\ntx3 = Transaction(data3)\ntx3.begin()\ntx3.data[\"balance\"] = 999\ntx3.data[\"items\"].append(\"c\")\ntx3.rollback()\nassert data3[\"balance\"] == 100, f\"External ref: {data3}\"\nassert data3[\"items\"] == [\"a\", \"b\"], f\"Deep: {data3['items']}\"\n\ndata4 = {\"x\": 1}\ntx4 = Transaction(data4)\ntx4.begin()\ntx4.data[\"x\"] = 2\ntx4.begin()\ntx4.data[\"x\"] = 3\ntx4.rollback()\nassert tx4.data[\"x\"] == 2, f\"Nested: {tx4.data}\"\ntx4.commit()\nassert tx4.data[\"x\"] == 2\n\nprint(\"PASSED\")\n",
+      "tasks/t6/markdown.py": "import re\n\ndef parse_markdown(text):\n    lines = text.split(\"\\n\")\n    html_parts = []\n    in_list = False\n    for line in lines:\n        heading = re.match(r'^(#{2,6})\\s+(.+)$', line)  # Bug A: misses h1\n        if heading:\n            level = len(heading.group(1))\n            html_parts.append(f\"<h{level}>{heading.group(2)}</h{level}>\")\n            continue\n        list_match = re.match(r'^-\\s+(.+)$', line)\n        if list_match:\n            if not in_list:\n                html_parts.append(\"<ul>\")\n                in_list = True\n            content = list_match.group(1)\n            # Bug B: no inline formatting in list items\n            html_parts.append(f\"<li>{content}</li>\")\n            continue\n        if in_list and not line.strip().startswith(\"-\"):\n            html_parts.append(\"</ul>\")\n            in_list = False\n        line = re.sub(r'\\*\\*(.+?)\\*\\*', r'<strong>\\1</strong>', line)\n        line = re.sub(r'\\*(.+?)\\*', r'<em>\\1</em>', line)\n        if line.strip():\n            html_parts.append(f\"<p>{line}</p>\")\n    if in_list:\n        html_parts.append(\"</ul>\")\n    return \"\\n\".join(html_parts)\n",
+      "tasks/t6/test_markdown.py": "from markdown import parse_markdown\n\nhtml = parse_markdown(\"# Hello World\")\nassert \"<h1>Hello World</h1>\" in html, f\"H1: {html}\"\n\nhtml2 = parse_markdown(\"## Sub\\n### Section\")\nassert \"<h2>Sub</h2>\" in html2\nassert \"<h3>Section</h3>\" in html2\n\nhtml3 = parse_markdown(\"This is **bold** and *italic*\")\nassert \"<strong>bold</strong>\" in html3\nassert \"<em>italic</em>\" in html3\n\nhtml4 = parse_markdown(\"- **bold item**\\n- *italic item*\\n- plain\")\nassert \"<strong>bold item</strong>\" in html4, f\"Bold in list: {html4}\"\nassert \"<em>italic item</em>\" in html4, f\"Italic in list: {html4}\"\n\nprint(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T13:57:24.292250+00:00",
+  "finished_at": "2026-03-21T14:03:06.994267+00:00",
+  "num_tasks": 6,
+  "trials_a_count": 30,
+  "trials_b_count": 30
+}

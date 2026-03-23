@@ -1,0 +1,111 @@
+{
+  "run_id": "9245f026-8b3a-464c-91ed-1760c7338965",
+  "experiment": {
+    "name": "cross_model_self_correction__haiku_pivot_vs_haiku_refine",
+    "description": "Cross-model self-correction: haiku vs sonnet on pivot and refine strategies. 4 agents in round-robin. Same tasks as self_correction_strategy.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "haiku_pivot vs haiku_refine"
+    },
+    "agent_a": {
+      "name": "haiku_pivot",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\nPHASE 1 — First attempt:\n1. Read the source file\n2. Read the test file\n3. Identify all bugs\n4. Fix all bugs in one pass\n5. Run the test\n\nPHASE 2 — If any test still fails:\n6. REVERT all your changes: run `git checkout -- .` to restore original files\n7. Re-read the test output from step 5 carefully\n8. Re-read the source file with fresh eyes\n9. Identify ALL bugs (including ones you missed before)\n10. Fix ALL bugs from scratch in one pass\n11. Run the test again\n\nCRITICAL CONSTRAINTS:\n- After a failed test, you are FORBIDDEN from making incremental edits\n- You MUST run `git checkout -- .` before your second attempt\n- You MUST re-read the source file after reverting\n- Your first analysis was incomplete — start fresh with full knowledge\n- \"Revert everything, rethink everything\"\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "haiku_refine",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES for fixing bugs:\n\nPHASE 1 — First attempt:\n1. Read the source file\n2. Read the test file\n3. Identify all bugs\n4. Fix all bugs in one pass\n5. Run the test\n\nPHASE 2 — If any test still fails:\n6. Do NOT revert your changes — your existing fixes may be correct\n7. Read ONLY the new test output to identify which tests still fail\n8. Make MINIMAL additional edits to fix just the remaining failures\n9. Run the test again\n\nCRITICAL CONSTRAINTS:\n- After a failed test, you are FORBIDDEN from reverting previous changes\n- You are FORBIDDEN from running `git checkout` or `git restore`\n- You are FORBIDDEN from re-reading the source file — use only the test output\n- Your first fixes were partially right — build on them, don't restart\n- \"Keep what works, fix what's still broken\"\n\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 10,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/inventory.py. Run: cd tasks/t1 && python test_inventory.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "arithmetic",
+          "comparison"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t2/textstats.py. Run: cd tasks/t2 && python test_textstats.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "string-processing"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/pqueue.py. Run: cd tasks/t3 && python test_pqueue.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "data-structure"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t4/grades.py. Run: cd tasks/t4 && python test_grades.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "math",
+          "boundary"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "cross-model",
+      "self-correction",
+      "haiku-vs-sonnet",
+      "tournament",
+      "cross_model_self_correction"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "tasks/t1/inventory.py": "class Inventory:\n    def __init__(self):\n        self.items = {}\n\n    def add(self, name, qty, price):\n        if name in self.items:\n            self.items[name][\"qty\"] += qty\n            self.items[name][\"price\"] = price\n        else:\n            self.items[name] = {\"qty\": qty, \"price\": price}\n\n    def sell(self, name, qty):\n        if name not in self.items or self.items[name][\"qty\"] < qty:\n            return None\n        self.items[name][\"qty\"] -= qty\n        return qty * self.items[name][\"price\"]\n\n    def total_value(self):\n        \"\"\"Total value of all inventory (qty * price per item).\"\"\"\n        return sum(d[\"qty\"] + d[\"price\"] for d in self.items.values())\n\n    def most_valuable(self):\n        \"\"\"Return name of the item with highest total value (qty * price).\"\"\"\n        if not self.items:\n            return None\n        return max(self.items.items(), key=lambda x: x[1][\"qty\"])[0]\n",
+      "tasks/t1/test_inventory.py": "from inventory import Inventory\n\ndef test_total_value():\n    inv = Inventory()\n    inv.add(\"widget\", 10, 5)\n    inv.add(\"gadget\", 3, 20)\n    total = inv.total_value()\n    # 10*5 + 3*20 = 50 + 60 = 110\n    assert total == 110, f\"Expected 110, got {total}\"\n    print(\"  total_value: PASSED\")\n\ndef test_sell():\n    inv = Inventory()\n    inv.add(\"widget\", 10, 5)\n    revenue = inv.sell(\"widget\", 3)\n    assert revenue == 15, f\"Expected 15, got {revenue}\"\n    assert inv.items[\"widget\"][\"qty\"] == 7\n    print(\"  sell: PASSED\")\n\ndef test_most_valuable():\n    inv = Inventory()\n    inv.add(\"cheap_bulk\", 100, 1)    # value = 100\n    inv.add(\"expensive_few\", 2, 200)  # value = 400\n    best = inv.most_valuable()\n    assert best == \"expensive_few\", f\"Expected expensive_few (val=400), got {best}\"\n    print(\"  most_valuable: PASSED\")\n\ndef test_most_valuable_equal_qty():\n    inv = Inventory()\n    inv.add(\"A\", 5, 10)   # value = 50\n    inv.add(\"B\", 5, 100)  # value = 500\n    best = inv.most_valuable()\n    assert best == \"B\", f\"Expected B (val=500), got {best}\"\n    print(\"  most_valuable_equal_qty: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_total_value\", \"test_sell\",\n                  \"test_most_valuable\", \"test_most_valuable_equal_qty\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/textstats.py": "def word_count(text):\n    \"\"\"Return the number of words in the text.\"\"\"\n    return len(text)\n\ndef most_common_word(text):\n    \"\"\"Return the most frequently occurring word (case-insensitive).\"\"\"\n    words = text.lower().split()\n    if not words:\n        return None\n    counts = {}\n    for w in words:\n        counts[w] = counts.get(w, 0) + 1\n    return min(counts, key=counts.get)\n\ndef unique_words(text):\n    \"\"\"Return sorted list of unique words (case-insensitive).\"\"\"\n    return sorted(set(text.lower().split()))\n",
+      "tasks/t2/test_textstats.py": "from textstats import word_count, most_common_word, unique_words\n\ndef test_word_count():\n    assert word_count(\"hello world\") == 2, f\"Got {word_count('hello world')}\"\n    assert word_count(\"one\") == 1\n    assert word_count(\"a b c d e\") == 5\n    print(\"  word_count: PASSED\")\n\ndef test_most_common():\n    text = \"the cat sat on the mat the\"\n    result = most_common_word(text)\n    assert result == \"the\", f\"Expected 'the' (3 times), got '{result}'\"\n    print(\"  most_common: PASSED\")\n\ndef test_most_common_tie():\n    text = \"a b a b c\"\n    result = most_common_word(text)\n    assert result in (\"a\", \"b\"), f\"Expected 'a' or 'b' (2 each), got '{result}'\"\n    print(\"  most_common_tie: PASSED\")\n\ndef test_unique_words():\n    result = unique_words(\"The the THE cat Cat\")\n    assert result == [\"cat\", \"the\"], f\"Got {result}\"\n    print(\"  unique_words: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_word_count\", \"test_most_common\",\n                  \"test_most_common_tie\", \"test_unique_words\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/pqueue.py": "class PriorityQueue:\n    def __init__(self):\n        self.tasks = []\n\n    def push(self, name, priority):\n        \"\"\"Add a task with given priority. Higher number = higher priority.\"\"\"\n        self.tasks.append({\"name\": name, \"priority\": priority})\n        self.tasks.sort(key=lambda t: t[\"priority\"])\n\n    def pop(self):\n        \"\"\"Remove and return the highest-priority task.\"\"\"\n        if not self.tasks:\n            return None\n        return self.tasks.pop(0)\n\n    def peek(self):\n        \"\"\"Return the highest-priority task without removing it.\"\"\"\n        if not self.tasks:\n            return None\n        return self.tasks[0][\"name\"]\n\n    def size(self):\n        \"\"\"Return number of tasks in queue.\"\"\"\n        return len(self.tasks) - 1\n",
+      "tasks/t3/test_pqueue.py": "from pqueue import PriorityQueue\n\ndef test_priority_order():\n    pq = PriorityQueue()\n    pq.push(\"low\", 1)\n    pq.push(\"high\", 10)\n    pq.push(\"medium\", 5)\n    result = pq.pop()\n    assert result[\"name\"] == \"high\", f\"Expected highest priority first, got {result}\"\n    print(\"  priority_order: PASSED\")\n\ndef test_peek():\n    pq = PriorityQueue()\n    pq.push(\"A\", 3)\n    pq.push(\"B\", 7)\n    assert pq.peek() == \"B\", f\"Expected B (priority 7), got {pq.peek()}\"\n    # peek should not remove\n    assert pq.size() == 2, f\"peek removed item, size={pq.size()}\"\n    print(\"  peek: PASSED\")\n\ndef test_size():\n    pq = PriorityQueue()\n    assert pq.size() == 0, f\"Empty queue size: {pq.size()}\"\n    pq.push(\"A\", 1)\n    assert pq.size() == 1, f\"After 1 push, size: {pq.size()}\"\n    pq.push(\"B\", 2)\n    assert pq.size() == 2, f\"After 2 pushes, size: {pq.size()}\"\n    pq.pop()\n    assert pq.size() == 1, f\"After pop, size: {pq.size()}\"\n    print(\"  size: PASSED\")\n\ndef test_empty_pop():\n    pq = PriorityQueue()\n    assert pq.pop() is None\n    assert pq.peek() is None\n    print(\"  empty_pop: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_priority_order\", \"test_peek\", \"test_size\", \"test_empty_pop\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/grades.py": "def apply_curve(scores, curve):\n    \"\"\"Apply a multiplicative curve to all scores. E.g., curve=1.1 adds 10%.\"\"\"\n    return [s + curve for s in scores]\n\ndef average(scores):\n    \"\"\"Return the average of a list of scores.\"\"\"\n    if not scores:\n        return 0\n    return sum(scores) / len(scores)\n\ndef letter_grade(score):\n    \"\"\"Convert numeric score to letter grade.\"\"\"\n    if score > 90:\n        return \"A\"\n    elif score > 80:\n        return \"B\"\n    elif score > 70:\n        return \"C\"\n    elif score > 60:\n        return \"D\"\n    else:\n        return \"F\"\n\ndef class_report(scores, curve=1.0):\n    \"\"\"Generate a report with curved scores, average, and grade distribution.\"\"\"\n    curved = apply_curve(scores, curve)\n    avg = average(curved)\n    grades = {}\n    for s in curved:\n        g = letter_grade(s)\n        grades[g] = grades.get(g, 0) + 1\n    return {\"curved_scores\": curved, \"average\": avg, \"grades\": grades}\n",
+      "tasks/t4/test_grades.py": "from grades import apply_curve, average, letter_grade, class_report\n\ndef test_apply_curve():\n    scores = [80, 70, 90]\n    curved = apply_curve(scores, 1.1)\n    # 80*1.1=88, 70*1.1=77, 90*1.1=99\n    assert curved == [88.0, 77.0, 99.0], f\"Expected [88, 77, 99], got {curved}\"\n    print(\"  apply_curve: PASSED\")\n\ndef test_curve_identity():\n    scores = [85, 92]\n    curved = apply_curve(scores, 1.0)\n    assert curved == [85.0, 92.0], f\"Curve 1.0 should preserve scores: {curved}\"\n    print(\"  curve_identity: PASSED\")\n\ndef test_letter_grade_boundaries():\n    assert letter_grade(90) == \"A\", f\"90 should be A, got {letter_grade(90)}\"\n    assert letter_grade(80) == \"B\", f\"80 should be B, got {letter_grade(80)}\"\n    assert letter_grade(70) == \"C\", f\"70 should be C, got {letter_grade(70)}\"\n    assert letter_grade(60) == \"D\", f\"60 should be D, got {letter_grade(60)}\"\n    assert letter_grade(59) == \"F\"\n    print(\"  letter_grade_boundaries: PASSED\")\n\ndef test_class_report():\n    scores = [80, 70, 90]\n    report = class_report(scores, curve=1.1)\n    assert report[\"average\"] == 88.0, f\"Average: {report['average']}\"\n    assert report[\"grades\"].get(\"A\") == 1  # 99 -> A\n    print(\"  class_report: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_apply_curve\", \"test_curve_identity\",\n                  \"test_letter_grade_boundaries\", \"test_class_report\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": "cd tasks/t1 && git init -q && git add -A && git commit -q -m init && cd ../t2 && git init -q && git add -A && git commit -q -m init && cd ../t3 && git init -q && git add -A && git commit -q -m init && cd ../t4 && git init -q && git add -A && git commit -q -m init"
+  },
+  "started_at": "2026-03-22T17:03:53.507804+00:00",
+  "finished_at": "2026-03-22T17:06:18.001981+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 12,
+  "trials_b_count": 12
+}

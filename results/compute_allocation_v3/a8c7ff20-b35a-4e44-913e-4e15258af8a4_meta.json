@@ -1,0 +1,144 @@
+{
+  "run_id": "a8c7ff20-b35a-4e44-913e-4e15258af8a4",
+  "experiment": {
+    "name": "compute_allocation_v3",
+    "description": "Inference-time compute allocation v3: EXTREME prompts forcing different behavior — act-first (run tests immediately, no Read) vs plan-first (read ALL files before any Edit). Tests both compliance and performance under tight 5-turn budget.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "Extreme act-first (no Read allowed first) vs extreme plan-first (must Read all before Edit)"
+    },
+    "agent_a": {
+      "name": "act_first",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES — you MUST follow these in order:\n\nSTEP 1: Run the test file IMMEDIATELY as your VERY FIRST action.\n  cd tasks/tN && python test_*.py\nDo NOT read any source files before running the test.\n\nSTEP 2: Based on the error output, make your best guess at a fix.\nEdit the source file directly based on the error message.\n\nSTEP 3: Run the test again. If it fails, repeat step 2.\n\nCRITICAL: You are FORBIDDEN from using the Read tool before your first\nBash or Edit call. The error messages from tests contain all the info\nyou need. Reading source code first wastes your limited turns.\n\nYou have very few turns. Every Read is a wasted turn.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 5,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "plan_first",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "STRICT RULES — you MUST follow these in order:\n\nSTEP 1: Use Glob to find all .py files in the task directory.\n\nSTEP 2: Read EVERY source file (not test files) completely.\nYou MUST read all source files before making ANY changes.\n\nSTEP 3: Read the test file to understand what's expected.\n\nSTEP 4: Now that you understand everything, make ALL fixes in one pass.\nEdit each file once, precisely.\n\nSTEP 5: Run the test to verify.\n\nCRITICAL: You are FORBIDDEN from using Edit or Bash before you have\nread ALL source files. Understanding the full codebase is essential.\nOne precise fix is better than multiple guesses.\n\nYou have very few turns. Every failed edit is a wasted turn.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 5,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/. Run `cd tasks/t1 && python test_cart.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "misleading-error",
+          "multi-file",
+          "plan-favored"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug in tasks/t2/. Run `cd tasks/t2 && python test_queue.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "clear-error",
+          "single-file",
+          "act-favored"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/ (3 files: base_config, env_config, test_config). Run `cd tasks/t3 && python test_config.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "cross-module",
+          "3-files",
+          "plan-favored"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bugs in tasks/t4/. Run `cd tasks/t4 && python test_events.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "dual-bug",
+          "event-system"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t5/ (permissions.py). Run `cd tasks/t5 && python test_permissions.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "cache-invalidation",
+          "recursion",
+          "plan-favored"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the SQL bug in tasks/t6/ (query_builder.py). Run `cd tasks/t6 && python test_orm.py` to verify. Print the test output.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "sql-order",
+          "multi-file",
+          "act-favored"
+        ],
+        "check_fn": "\"PASSED\" in output"
+      }
+    ],
+    "tags": [
+      "compute-allocation",
+      "extreme-prompts",
+      "compliance",
+      "research"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/price_engine.py": "\"\"\"Pricing engine with tiered discounts.\"\"\"\n\nDISCOUNT_TIERS = [\n    (100, 0.05),   # 5% off orders >= $100\n    (250, 0.10),   # 10% off orders >= $250\n    (500, 0.15),   # 15% off orders >= $500\n]\n\ndef calculate_discount(subtotal):\n    \"\"\"Return discount rate for given subtotal.\"\"\"\n    rate = 0.0\n    for threshold, discount in DISCOUNT_TIERS:\n        if subtotal >= threshold:\n            rate = discount\n    return rate\n\ndef apply_discount(subtotal):\n    \"\"\"Return (discounted_total, savings).\"\"\"\n    rate = calculate_discount(subtotal)\n    savings = subtotal * rate\n    savings = round(savings, 2)\n    # Bug: doesn't round the total — causes penny discrepancies\n    return subtotal - savings, savings\n",
+      "tasks/t1/cart.py": "from price_engine import calculate_discount, apply_discount\n\nclass Cart:\n    def __init__(self):\n        self.items = []\n\n    def add(self, name, price, qty=1):\n        for i, (n, p, q) in enumerate(self.items):\n            if n == name:\n                self.items[i] = (n, p, q + qty)\n                return\n        self.items.append((name, price, qty))\n\n    def subtotal(self):\n        return sum(p * q for _, p, q in self.items)\n\n    def checkout(self):\n        sub = self.subtotal()\n        total, savings = apply_discount(sub)\n        return {\n            \"subtotal\": sub,\n            \"discount_rate\": calculate_discount(sub),\n            \"savings\": savings,\n            \"total\": total,\n        }\n",
+      "tasks/t1/test_cart.py": "from cart import Cart\n\nc = Cart()\nc.add(\"Penny\", 0.01, 10001)  # 100.01 -> 5% tier\nresult = c.checkout()\nassert result[\"total\"] == round(result[\"subtotal\"] - result[\"savings\"], 2), \\\n    f\"Rounding error: total={result['total']} expected={round(result['subtotal'] - result['savings'], 2)}\"\n\nc2 = Cart()\nc2.add(\"A\", 33.33, 4)  # 133.32 -> 5%\nr2 = c2.checkout()\nexpected_total = round(133.32 - round(133.32 * 0.05, 2), 2)\nassert r2[\"total\"] == expected_total, f\"Total {r2['total']} != {expected_total}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t2/task_queue.py": "from enum import Enum\n\nclass Status(Enum):\n    PENDING = \"pending\"\n    RUNNING = \"running\"\n    DONE = \"done\"\n    FAILED = \"failed\"\n    CANCELLED = \"cancelled\"\n\nclass Task:\n    def __init__(self, task_id, fn, priority=0):\n        self.task_id = task_id\n        self.fn = fn\n        self.priority = priority\n        self.status = Status.PENDING\n        self.result = None\n        self.error = None\n\nclass TaskQueue:\n    def __init__(self):\n        self.tasks = {}\n        self.execution_order = []\n\n    def submit(self, task_id, fn, priority=0):\n        task = Task(task_id, fn, priority)\n        self.tasks[task_id] = task\n        return task\n\n    def cancel(self, task_id):\n        task = self.tasks.get(task_id)\n        if task is None:\n            raise KeyError(f\"Task {task_id} not found\")\n        if task.status != Status.PENDING:\n            raise ValueError(f\"Cannot cancel task in {task.status} state\")\n        task.status = Status.CANCELLED\n\n    def run_all(self):\n        pending = [(t.priority, t.task_id, t) for t in self.tasks.values()\n                   if t.status == Status.PENDING]\n        pending.sort()  # Bug: ascending sort = lowest priority first\n\n        for _, task_id, task in pending:\n            task.status = Status.RUNNING\n            try:\n                task.result = task.fn()\n                task.status = Status.DONE\n            except Exception as e:\n                task.error = str(e)\n                task.status = Status.FAILED\n            self.execution_order.append(task_id)\n\n    def get_results(self):\n        return {tid: (t.status, t.result) for tid, t in self.tasks.items()}\n",
+      "tasks/t2/test_queue.py": "from task_queue import TaskQueue, Status\n\n# Priority ordering (highest runs first)\nq = TaskQueue()\nq.submit(\"low\", lambda: 1, priority=1)\nq.submit(\"high\", lambda: 3, priority=10)\nq.submit(\"mid\", lambda: 2, priority=5)\nq.run_all()\nassert q.execution_order == [\"high\", \"mid\", \"low\"], \\\n    f\"Priority order wrong: {q.execution_order} (expected highest priority first)\"\n\nprint(\"PASSED\")\n",
+      "tasks/t3/base_config.py": "DEFAULTS = {\n    \"host\": \"0.0.0.0\",\n    \"port\": 8080,\n    \"debug\": False,\n    \"database\": {\n        \"url\": \"sqlite:///default.db\",\n        \"pool_size\": 5,\n    },\n}\n\ndef deep_merge(base, override):\n    \"\"\"Deep merge override into base.\"\"\"\n    result = base.copy()\n    for key, value in override.items():\n        if key in result and isinstance(result[key], dict) and isinstance(value, dict):\n            result[key] = deep_merge(result[key], value)\n        else:\n            result[key] = value\n    return result\n\ndef coerce_type(value, expected_type):\n    if isinstance(value, expected_type):\n        return value\n    if expected_type == bool:\n        # Bug: bool(\"false\") == True in Python\n        return bool(value)\n    return expected_type(value)\n",
+      "tasks/t3/env_config.py": "import os\nfrom base_config import DEFAULTS, deep_merge\n\ndef load_env(prefix=\"APP\"):\n    overrides = {}\n    for key, value in os.environ.items():\n        if not key.startswith(f\"{prefix}_\"):\n            continue\n        path = key[len(prefix)+1:].lower().split(\"__\")\n        current = overrides\n        for part in path[:-1]:\n            current = current.setdefault(part, {})\n        current[path[-1]] = value\n    return overrides\n\ndef get_config():\n    env = load_env()\n    # Bug: shallow merge — loses nested defaults\n    return {**DEFAULTS, **env}\n",
+      "tasks/t3/test_config.py": "import os\nfor k in list(os.environ):\n    if k.startswith(\"APP_\"):\n        del os.environ[k]\n\nfrom base_config import deep_merge, coerce_type\n\n# deep_merge test\nmerged = deep_merge({\"a\": 1, \"b\": {\"x\": 10}}, {\"b\": {\"y\": 20}})\nassert merged == {\"a\": 1, \"b\": {\"x\": 10, \"y\": 20}}, f\"Merge: {merged}\"\n\n# bool coercion\nassert coerce_type(\"false\", bool) == False, f\"bool coercion: {coerce_type('false', bool)}\"\nassert coerce_type(\"true\", bool) == True\nassert coerce_type(\"0\", bool) == False\n\n# env config with nested override\nos.environ[\"APP_DATABASE__POOL_SIZE\"] = \"20\"\n\nfrom env_config import get_config\nconfig = get_config()\nassert config[\"database\"][\"url\"] == \"sqlite:///default.db\", \\\n    f\"Shallow merge lost url: {config.get('database')}\"\nassert config[\"database\"][\"pool_size\"] == \"20\" or config[\"database\"][\"pool_size\"] == 20\n\nprint(\"PASSED\")\n",
+      "tasks/t4/events.py": "class EventEmitter:\n    def __init__(self):\n        self._handlers = {}\n\n    def on(self, event, fn, priority=0):\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((priority, fn, False))\n\n    def once(self, event, fn, priority=0):\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((priority, fn, True))\n\n    def emit(self, event, *args, **kwargs):\n        if event not in self._handlers:\n            return\n        # Bug: ascending sort — should be descending for \"higher priority first\"\n        handlers = sorted(self._handlers[event], key=lambda h: h[0])\n        for priority, fn, once in handlers:\n            fn(*args, **kwargs)\n        # Bug: never removes once-handlers\n",
+      "tasks/t4/test_events.py": "from events import EventEmitter\n\n# Priority ordering (higher first)\norder = []\nem = EventEmitter()\nem.on(\"e\", lambda: order.append(\"low\"), priority=1)\nem.on(\"e\", lambda: order.append(\"high\"), priority=10)\nem.emit(\"e\")\nassert order == [\"high\", \"low\"], f\"Priority: {order}\"\n\n# Once\ncount = []\nem2 = EventEmitter()\nem2.once(\"x\", lambda: count.append(1))\nem2.emit(\"x\")\nem2.emit(\"x\")\nassert len(count) == 1, f\"Once fired {len(count)} times\"\n\nprint(\"PASSED\")\n",
+      "tasks/t5/permissions.py": "class PermissionSystem:\n    def __init__(self):\n        self.roles = {}\n        self.user_roles = {}\n        self._cache = {}\n\n    def define_role(self, name, permissions=None, parents=None):\n        self.roles[name] = {\n            \"permissions\": set(permissions or []),\n            \"parents\": list(parents or []),\n        }\n        self._cache.clear()\n\n    def assign_role(self, user_id, role_name):\n        if role_name not in self.roles:\n            raise KeyError(f\"Role {role_name} not defined\")\n        self.user_roles.setdefault(user_id, set()).add(role_name)\n        # Bug: missing cache invalidation\n\n    def revoke_role(self, user_id, role_name):\n        if user_id in self.user_roles:\n            self.user_roles[user_id].discard(role_name)\n            # Bug: missing cache invalidation\n\n    def get_permissions(self, role_name, visited=None):\n        if visited is None:\n            visited = set()\n        if role_name in visited:\n            return set()\n        visited.add(role_name)\n        role = self.roles.get(role_name)\n        if not role:\n            return set()\n        perms = set(role[\"permissions\"])\n        for parent in role[\"parents\"]:\n            perms.update(self.get_permissions(parent))  # Bug: doesn't pass visited\n        return perms\n\n    def check(self, user_id, permission):\n        key = (user_id, permission)\n        if key in self._cache:\n            return self._cache[key]\n        result = any(\n            permission in self.get_permissions(r)\n            for r in self.user_roles.get(user_id, set())\n        )\n        self._cache[key] = result\n        return result\n",
+      "tasks/t5/test_permissions.py": "from permissions import PermissionSystem\n\nps = PermissionSystem()\nps.define_role(\"viewer\", permissions=[\"read\"])\nps.define_role(\"editor\", permissions=[\"write\"], parents=[\"viewer\"])\nps.define_role(\"admin\", permissions=[\"manage\"], parents=[\"editor\"])\n\n# Transitive: admin -> editor -> viewer -> read\nassert \"read\" in ps.get_permissions(\"admin\"), \"Transitive inheritance broken\"\n\n# Cache invalidation on assign\nps.assign_role(\"alice\", \"editor\")\nassert ps.check(\"alice\", \"read\") == True\nps.assign_role(\"alice\", \"admin\")\nassert ps.check(\"alice\", \"manage\") == True, \"Cache not invalidated on assign\"\n\n# Cache invalidation on revoke\nps.revoke_role(\"alice\", \"admin\")\nassert ps.check(\"alice\", \"manage\") == False, \"Cache not invalidated on revoke\"\n\n# Cycle protection\nps.define_role(\"a\", permissions=[\"pa\"], parents=[\"b\"])\nps.define_role(\"b\", permissions=[\"pb\"], parents=[\"a\"])\nperms = ps.get_permissions(\"a\")\nassert \"pa\" in perms and \"pb\" in perms, f\"Cycle broke inheritance: {perms}\"\n\nprint(\"PASSED\")\n",
+      "tasks/t6/query_builder.py": "import re\n\nclass Query:\n    def __init__(self, table):\n        self.table = table\n        self._select = [\"*\"]\n        self._where = []\n        self._order_by = []\n        self._limit = None\n        self._offset = None\n        self._params = []\n\n    def select(self, *cols):\n        self._select = list(cols)\n        return self\n\n    def where(self, cond, *params):\n        self._where.append(cond)\n        self._params.extend(params)\n        return self\n\n    def order_by(self, col, desc=False):\n        self._order_by.append(f\"{col} {'DESC' if desc else 'ASC'}\")\n        return self\n\n    def limit(self, n):\n        self._limit = n\n        return self\n\n    def offset(self, n):\n        self._offset = n\n        return self\n\n    def build(self):\n        parts = [f\"SELECT {', '.join(self._select)} FROM {self.table}\"]\n        if self._where:\n            parts.append(f\"WHERE {' AND '.join(self._where)}\")\n        if self._order_by:\n            parts.append(f\"ORDER BY {', '.join(self._order_by)}\")\n        # Bug: OFFSET before LIMIT — SQLite requires LIMIT before OFFSET\n        if self._offset is not None:\n            parts.append(f\"OFFSET {self._offset}\")\n        if self._limit is not None:\n            parts.append(f\"LIMIT {self._limit}\")\n        return ' '.join(parts), self._params\n",
+      "tasks/t6/mini_orm.py": "import sqlite3\nfrom query_builder import Query\n\nclass Model:\n    _table = None\n    _db = None\n\n    @classmethod\n    def set_db(cls, path):\n        cls._db = sqlite3.connect(path)\n        cls._db.row_factory = sqlite3.Row\n\n    @classmethod\n    def find(cls, **kw):\n        q = Query(cls._table)\n        for k, v in kw.items():\n            q.where(f\"{k} = ?\", v)\n        sql, params = q.build()\n        return [dict(r) for r in cls._db.execute(sql, params)]\n\n    @classmethod\n    def all(cls, order_by=None, limit=None, offset=None):\n        q = Query(cls._table)\n        if order_by:\n            desc = order_by.startswith(\"-\")\n            q.order_by(order_by.lstrip(\"-\"), desc=desc)\n        if limit:\n            q.limit(limit)\n        if offset:\n            q.offset(offset)\n        sql, params = q.build()\n        return [dict(r) for r in cls._db.execute(sql, params)]\n\nclass User(Model):\n    _table = \"users\"\n",
+      "tasks/t6/test_orm.py": "import os, sqlite3\nfrom mini_orm import User, Model\n\nDB = \"test.db\"\nif os.path.exists(DB): os.remove(DB)\nconn = sqlite3.connect(DB)\nconn.execute(\"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)\")\nfor i, name in enumerate([\"Alice\", \"Bob\", \"Carol\", \"Dave\"], 1):\n    conn.execute(\"INSERT INTO users VALUES (?, ?)\", (i, name))\nconn.commit()\nconn.close()\n\nModel.set_db(DB)\n\n# Basic find\nassert User.find(name=\"Alice\")[0][\"name\"] == \"Alice\"\n\n# Pagination: LIMIT then OFFSET\npage1 = User.all(order_by=\"name\", limit=2)\nassert len(page1) == 2 and page1[0][\"name\"] == \"Alice\"\n\npage2 = User.all(order_by=\"name\", limit=2, offset=2)\nassert len(page2) == 2, f\"Page 2: {page2}\"\nassert page2[0][\"name\"] == \"Carol\", f\"Page 2 first: {page2}\"\n\nos.remove(DB)\nprint(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T13:35:18.652784+00:00",
+  "finished_at": "2026-03-21T13:37:44.509200+00:00",
+  "num_tasks": 6,
+  "trials_a_count": 30,
+  "trials_b_count": 30
+}

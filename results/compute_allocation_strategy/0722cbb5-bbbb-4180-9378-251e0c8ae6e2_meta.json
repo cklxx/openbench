@@ -1,0 +1,162 @@
+{
+  "run_id": "0722cbb5-bbbb-4180-9378-251e0c8ae6e2",
+  "experiment": {
+    "name": "compute_allocation_strategy",
+    "description": "Inference-time compute allocation: plan-first (read→analyze→act) vs act-first (code→test→iterate) under fixed 15-turn budget. Tests whether front-loading analysis beats rapid iteration.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "act-first (iterate fast) vs plan-first (analyze then act once)"
+    },
+    "agent_a": {
+      "name": "act_first",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a fast, action-oriented developer. Your strategy:\n\n1. Start writing code or making changes IMMEDIATELY\n2. Run tests early and often to get feedback\n3. Fix errors as they appear — iterate rapidly\n4. Don't overthink — let the test results guide you\n\nSpeed is your advantage. The faster you get to a running state, the more\niterations you can fit. Trust your instincts, write code, run it, fix it.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "plan_first",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are a methodical, analysis-driven developer. Your strategy:\n\n1. FIRST: Read ALL relevant files before making any changes\n2. THEN: Identify the root cause or design requirements thoroughly\n3. THEN: Form a clear plan of what to change and why\n4. ONLY THEN: Implement your changes in one precise pass\n5. Finally: Run tests to verify\n\nUnderstanding is your advantage. The more you understand before acting,\nthe fewer mistakes you'll make. Read first, think deeply, act once.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit"
+      ],
+      "max_turns": 15,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t1/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "off-by-one",
+          "pagination"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t2/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "easy",
+        "tags": [
+          "string-processing",
+          "error-handling"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t3/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "event-system",
+          "multiple-bugs"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t4/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "csv-parsing",
+          "edge-cases"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t5/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "medium",
+        "tags": [
+          "dependency-resolution",
+          "cycle-detection"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix the bug(s) in tasks/t6/. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "state-machine",
+          "multiple-bugs"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "The expression evaluator in tasks/t7/ has a subtle operator precedence bug. Run the test first to see which cases fail, then fix the code. Verify all tests pass.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "parser",
+          "precedence"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "The router in tasks/t8/ has a broken middleware chain. The middleware should form a chain where each calls next() to continue, but the current implementation just runs them sequentially. Fix the middleware execution so it works as a proper chain. Run the test to verify.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "middleware",
+          "chain-pattern"
+        ],
+        "check_fn": "\"passed\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "compute-allocation",
+      "inference-time",
+      "plan-vs-act",
+      "research"
+    ],
+    "num_samples": 5,
+    "setup_files": {
+      "tasks/t1/paginator.py": "def paginate(items, page, per_page=10):\n    \"\"\"Return a page of items (1-indexed) and metadata.\"\"\"\n    total = len(items)\n    total_pages = total // per_page + (1 if total % per_page else 0)\n    start = page * per_page  # Bug: should be (page-1) * per_page for 1-indexed\n    end = start + per_page\n    return {\n        \"items\": items[start:end],\n        \"page\": page,\n        \"per_page\": per_page,\n        \"total\": total,\n        \"total_pages\": total_pages,\n    }\n",
+      "tasks/t1/test_paginator.py": "from paginator import paginate\nitems = list(range(1, 26))  # 1..25\n# Page 1 should be first 10 items\np1 = paginate(items, page=1, per_page=10)\nassert p1[\"items\"] == list(range(1, 11)), f\"Page 1 wrong: {p1['items']}\"\nassert p1[\"total_pages\"] == 3\n# Page 2 should be next 10\np2 = paginate(items, page=2, per_page=10)\nassert p2[\"items\"] == list(range(11, 21)), f\"Page 2 wrong: {p2['items']}\"\n# Page 3 should be last 5\np3 = paginate(items, page=3, per_page=10)\nassert p3[\"items\"] == list(range(21, 26)), f\"Page 3 wrong: {p3['items']}\"\n# Edge: empty page\np4 = paginate(items, page=4, per_page=10)\nassert p4[\"items\"] == [], f\"Page 4 should be empty: {p4['items']}\"\nprint(\"test_paginator: PASSED\")\n",
+      "tasks/t2/template.py": "def render(template, context):\n    \"\"\"Simple {{key}} template renderer.\n    Supports {{key}} replacement and {{key|upper}} filter.\n    \"\"\"\n    import re\n    def replace_match(m):\n        expr = m.group(1).strip()\n        if '|' in expr:\n            key, filt = expr.split('|', 1)\n            key = key.strip()\n            filt = filt.strip()\n            value = context.get(key, '')\n            if filt == 'upper':\n                return str(value).upper()\n            elif filt == 'lower':\n                return str(value).lower()\n            elif filt == 'title':\n                return str(value).title()\n            return str(value)\n        else:\n            return str(context.get(expr, ''))  # Bug: missing keys become empty string, no error\n    # Bug: regex doesn't handle nested braces or escaped braces\n    result = re.sub(r'\\{\\{(.+?)\\}\\}', replace_match, template)\n    return result\n",
+      "tasks/t2/test_template.py": "from template import render\n# Basic\nassert render(\"Hello {{name}}!\", {\"name\": \"World\"}) == \"Hello World!\"\n# Filters\nassert render(\"{{name|upper}}\", {\"name\": \"alice\"}) == \"ALICE\"\nassert render(\"{{name|lower}}\", {\"name\": \"BOB\"}) == \"bob\"\nassert render(\"{{name|title}}\", {\"name\": \"hello world\"}) == \"Hello World\"\n# Multiple replacements\nassert render(\"{{a}} + {{b}} = {{c}}\", {\"a\": \"1\", \"b\": \"2\", \"c\": \"3\"}) == \"1 + 2 = 3\"\n# Missing key should raise KeyError, not silently return empty\ntry:\n    render(\"Hello {{missing}}!\", {})\n    assert False, \"Missing key should raise KeyError\"\nexcept KeyError:\n    pass\n# Numeric values\nassert render(\"Count: {{n}}\", {\"n\": 42}) == \"Count: 42\"\nprint(\"test_template: PASSED\")\n",
+      "tasks/t3/events.py": "class EventEmitter:\n    def __init__(self):\n        self._handlers = {}  # event -> [(priority, fn, once)]\n\n    def on(self, event, fn, priority=0):\n        \"\"\"Register handler. Higher priority runs first.\"\"\"\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((priority, fn, False))\n\n    def once(self, event, fn, priority=0):\n        \"\"\"Register handler that fires only once.\"\"\"\n        if event not in self._handlers:\n            self._handlers[event] = []\n        self._handlers[event].append((priority, fn, True))\n\n    def emit(self, event, *args, **kwargs):\n        \"\"\"Fire all handlers for event in priority order.\"\"\"\n        if event not in self._handlers:\n            return\n        # Bug 1: sort is ascending, should be descending for \"higher priority first\"\n        handlers = sorted(self._handlers[event], key=lambda h: h[0])\n        for priority, fn, once in handlers:\n            fn(*args, **kwargs)\n        # Bug 2: removing once-handlers while iterating would fail,\n        # but current code doesn't remove them at all\n        # Need to filter out once-handlers AFTER calling them\n",
+      "tasks/t3/test_events.py": "from events import EventEmitter\n# Basic emit\nresults = []\nem = EventEmitter()\nem.on(\"click\", lambda: results.append(\"a\"))\nem.on(\"click\", lambda: results.append(\"b\"))\nem.emit(\"click\")\nassert results == [\"a\", \"b\"], f\"Basic emit: {results}\"\n\n# Priority ordering (higher priority first)\norder = []\nem2 = EventEmitter()\nem2.on(\"load\", lambda: order.append(\"low\"), priority=1)\nem2.on(\"load\", lambda: order.append(\"high\"), priority=10)\nem2.on(\"load\", lambda: order.append(\"mid\"), priority=5)\nem2.emit(\"load\")\nassert order == [\"high\", \"mid\", \"low\"], f\"Priority order wrong: {order}\"\n\n# Once handler\ncount = []\nem3 = EventEmitter()\nem3.once(\"save\", lambda: count.append(1))\nem3.emit(\"save\")\nem3.emit(\"save\")\nem3.emit(\"save\")\nassert len(count) == 1, f\"Once fired {len(count)} times instead of 1\"\n\n# Once + regular mixed\nmixed = []\nem4 = EventEmitter()\nem4.on(\"x\", lambda: mixed.append(\"always\"))\nem4.once(\"x\", lambda: mixed.append(\"once\"))\nem4.emit(\"x\")\nem4.emit(\"x\")\nassert mixed == [\"always\", \"once\", \"always\"], f\"Mixed wrong: {mixed}\"\n\nprint(\"test_events: PASSED\")\n",
+      "tasks/t4/csv_parser.py": "def parse_csv(text, delimiter=','):\n    \"\"\"Parse CSV text into list of lists. Handles quoted fields.\"\"\"\n    rows = []\n    for line in text.strip().split('\\n'):\n        row = []\n        current = ''\n        in_quotes = False\n        for char in line:\n            if char == '\"':\n                in_quotes = not in_quotes\n            elif char == delimiter and not in_quotes:\n                row.append(current)\n                current = ''\n            else:\n                current += char\n        row.append(current)\n        rows.append(row)\n    return rows\n\ndef to_dicts(text, delimiter=','):\n    \"\"\"Parse CSV with header row into list of dicts.\"\"\"\n    rows = parse_csv(text, delimiter)\n    if not rows:\n        return []\n    headers = rows[0]\n    # Bug: doesn't strip whitespace from headers\n    return [{h: row[i] if i < len(row) else '' for i, h in enumerate(headers)}\n            for row in rows[1:]]\n",
+      "tasks/t4/test_csv.py": "from csv_parser import parse_csv, to_dicts\n\n# Basic parsing\nrows = parse_csv(\"a,b,c\\n1,2,3\\n4,5,6\")\nassert rows == [[\"a\", \"b\", \"c\"], [\"1\", \"2\", \"3\"], [\"4\", \"5\", \"6\"]]\n\n# Quoted fields with commas\nrows2 = parse_csv('name,bio\\nAlice,\"Loves cats, dogs\"\\nBob,\"Says \"\"hi\"\"\"')\nassert rows2[1][1] == \"Loves cats, dogs\", f\"Quoted comma: {rows2[1][1]}\"\n# Escaped quotes inside quoted field: \"\"hi\"\" should become \"hi\"\nassert rows2[2][1] == 'Says \"hi\"', f\"Escaped quotes: {rows2[2][1]}\"\n\n# to_dicts with header whitespace\ndata = to_dicts(\" name , age \\nAlice,30\\nBob,25\")\nassert data[0][\"name\"] == \"Alice\", f\"Header whitespace not stripped: {data[0]}\"\nassert data[1][\"age\"] == \"25\"\n\n# Empty fields\nrows3 = parse_csv(\"a,,c\\n1,,3\")\nassert rows3[0] == [\"a\", \"\", \"c\"]\nassert rows3[1] == [\"1\", \"\", \"3\"]\n\nprint(\"test_csv: PASSED\")\n",
+      "tasks/t5/resolver.py": "def resolve(deps):\n    \"\"\"Resolve dependency order. deps = {name: [dependencies]}.\n    Returns list in installation order (dependencies first).\n    Raises ValueError on circular dependency.\n    \"\"\"\n    resolved = []\n    seen = set()\n\n    def _resolve(name, path=None):\n        if path is None:\n            path = set()\n        if name in resolved:\n            return\n        if name in path:\n            # Bug: doesn't include the cycle in error message\n            raise ValueError(\"Circular dependency\")\n        path.add(name)\n        for dep in deps.get(name, []):\n            _resolve(dep, path)\n        # Bug: doesn't add to 'seen' set — 'seen' is unused\n        resolved.append(name)\n\n    for name in deps:\n        _resolve(name)\n    return resolved\n",
+      "tasks/t5/test_resolver.py": "from resolver import resolve\n\n# Simple chain: a -> b -> c\nresult = resolve({\"c\": [], \"b\": [\"c\"], \"a\": [\"b\"]})\nassert result.index(\"c\") < result.index(\"b\") < result.index(\"a\"), f\"Chain: {result}\"\n\n# Diamond: a -> b,c -> d\nresult2 = resolve({\"d\": [], \"b\": [\"d\"], \"c\": [\"d\"], \"a\": [\"b\", \"c\"]})\nassert result2.index(\"d\") < result2.index(\"b\")\nassert result2.index(\"d\") < result2.index(\"c\")\nassert result2.index(\"b\") < result2.index(\"a\")\nassert result2.index(\"c\") < result2.index(\"a\")\n\n# No deps\nresult3 = resolve({\"x\": [], \"y\": [], \"z\": []})\nassert set(result3) == {\"x\", \"y\", \"z\"}\n\n# Circular dependency detection\ntry:\n    resolve({\"a\": [\"b\"], \"b\": [\"c\"], \"c\": [\"a\"]})\n    assert False, \"Should raise ValueError for circular dependency\"\nexcept ValueError as e:\n    # Error message should contain the cycle\n    assert \"a\" in str(e) and \"c\" in str(e), f\"Cycle not in error: {e}\"\n\n# Self-dependency\ntry:\n    resolve({\"a\": [\"a\"]})\n    assert False, \"Self-dep should raise ValueError\"\nexcept ValueError:\n    pass\n\nprint(\"test_resolver: PASSED\")\n",
+      "tasks/t6/fsm.py": "\"\"\"Finite state machine with guards and actions.\"\"\"\n\nclass StateMachine:\n    def __init__(self, initial_state):\n        self.state = initial_state\n        self.transitions = {}  # (from_state, event) -> [(guard, to_state, action)]\n        self.history = [initial_state]\n\n    def add_transition(self, from_state, event, to_state, guard=None, action=None):\n        \"\"\"Add transition. Guard is a callable returning bool. Action is a callable.\"\"\"\n        key = (from_state, event)\n        if key not in self.transitions:\n            self.transitions[key] = []\n        self.transitions[key].append((guard, to_state, action))\n\n    def trigger(self, event, context=None):\n        \"\"\"Trigger event. Returns True if transition occurred.\"\"\"\n        key = (self.state, event)\n        if key not in self.transitions:\n            return False\n\n        for guard, to_state, action in self.transitions[key]:\n            if guard is None or guard(context):\n                if action:\n                    action(context)\n                self.state = to_state\n                # Bug: history not updated\n                return True\n        return False\n\n    def can_trigger(self, event, context=None):\n        \"\"\"Check if event can be triggered without actually triggering.\"\"\"\n        key = (self.state, event)\n        if key not in self.transitions:\n            return False\n        for guard, to_state, action in self.transitions[key]:\n            if guard is None or guard(context):\n                return True\n        return False\n\n    def reset(self):\n        \"\"\"Reset to initial state.\"\"\"\n        # Bug: doesn't know initial state — only has current state\n        self.history = [self.state]  # Should reset to history[0]\n",
+      "tasks/t6/test_fsm.py": "from fsm import StateMachine\n\n# Simple traffic light\nsm = StateMachine(\"red\")\nsm.add_transition(\"red\", \"next\", \"green\")\nsm.add_transition(\"green\", \"next\", \"yellow\")\nsm.add_transition(\"yellow\", \"next\", \"red\")\n\nassert sm.state == \"red\"\nassert sm.trigger(\"next\")\nassert sm.state == \"green\"\nassert sm.trigger(\"next\")\nassert sm.state == \"yellow\"\nassert sm.trigger(\"next\")\nassert sm.state == \"red\"\n\n# History tracking\nassert sm.history == [\"red\", \"green\", \"yellow\", \"red\"], f\"History: {sm.history}\"\n\n# Guard-based transitions\nsm2 = StateMachine(\"locked\")\nsm2.add_transition(\"locked\", \"coin\", \"unlocked\", guard=lambda ctx: ctx.get(\"amount\", 0) >= 25)\nsm2.add_transition(\"locked\", \"coin\", \"locked\")  # Fallback: insufficient coin\nsm2.add_transition(\"unlocked\", \"push\", \"locked\")\n\n# Insufficient coin\nassert sm2.trigger(\"coin\", {\"amount\": 10}) == True\nassert sm2.state == \"locked\"  # Stayed locked (fell through to fallback)\n\n# Sufficient coin\nassert sm2.trigger(\"coin\", {\"amount\": 25})\nassert sm2.state == \"unlocked\"\n\n# can_trigger\nassert sm2.can_trigger(\"push\")\nassert not sm2.can_trigger(\"coin\")  # No transition from unlocked on coin\n\n# Reset\nsm.reset()\nassert sm.state == \"red\", f\"Reset failed: {sm.state}\"\nassert sm.history == [\"red\"], f\"Reset history: {sm.history}\"\n\nprint(\"test_fsm: PASSED\")\n",
+      "tasks/t7/expr.py": "\"\"\"Simple arithmetic expression evaluator.\nSupports: +, -, *, /, parentheses, unary minus, variables.\n\"\"\"\n\ndef tokenize(expr):\n    \"\"\"Convert expression string to list of tokens.\"\"\"\n    tokens = []\n    i = 0\n    while i < len(expr):\n        if expr[i].isspace():\n            i += 1\n        elif expr[i].isdigit() or expr[i] == '.':\n            j = i\n            while j < len(expr) and (expr[j].isdigit() or expr[j] == '.'):\n                j += 1\n            tokens.append(('NUM', float(expr[i:j])))\n            i = j\n        elif expr[i].isalpha():\n            j = i\n            while j < len(expr) and expr[j].isalnum():\n                j += 1\n            tokens.append(('VAR', expr[i:j]))\n            i = j\n        elif expr[i] in '+-*/()':\n            tokens.append(('OP', expr[i]))\n            i += 1\n        else:\n            raise SyntaxError(f\"Unexpected character: {expr[i]}\")\n    return tokens\n\ndef evaluate(expr, variables=None):\n    \"\"\"Evaluate arithmetic expression string.\"\"\"\n    variables = variables or {}\n    tokens = tokenize(expr)\n    pos = [0]  # mutable index\n\n    def parse_expr():\n        \"\"\"Handle + and - (lowest precedence).\"\"\"\n        left = parse_term()\n        while pos[0] < len(tokens) and tokens[pos[0]] == ('OP', '+') or               pos[0] < len(tokens) and tokens[pos[0]] == ('OP', '-'):\n            op = tokens[pos[0]][1]\n            pos[0] += 1\n            right = parse_term()\n            if op == '+':\n                left = left + right\n            else:\n                left = left - right\n        return left\n\n    def parse_term():\n        \"\"\"Handle * and / (higher precedence).\"\"\"\n        left = parse_factor()\n        while pos[0] < len(tokens) and tokens[pos[0]] == ('OP', '*') or               pos[0] < len(tokens) and tokens[pos[0]] == ('OP', '/'):\n            op = tokens[pos[0]][1]\n            pos[0] += 1\n            right = parse_factor()\n            if op == '*':\n                left = left * right\n            else:\n                if right == 0:\n                    raise ZeroDivisionError(\"Division by zero\")\n                left = left / right\n        return left\n\n    def parse_factor():\n        \"\"\"Handle unary minus, numbers, variables, parentheses.\"\"\"\n        if pos[0] >= len(tokens):\n            raise SyntaxError(\"Unexpected end of expression\")\n\n        token = tokens[pos[0]]\n\n        # Unary minus\n        if token == ('OP', '-'):\n            pos[0] += 1\n            return -parse_factor()\n\n        # Parenthesized expression\n        if token == ('OP', '('):\n            pos[0] += 1\n            result = parse_expr()\n            if pos[0] >= len(tokens) or tokens[pos[0]] != ('OP', ')'):\n                raise SyntaxError(\"Missing closing parenthesis\")\n            pos[0] += 1\n            return result\n\n        # Number\n        if token[0] == 'NUM':\n            pos[0] += 1\n            return token[1]\n\n        # Variable\n        if token[0] == 'VAR':\n            pos[0] += 1\n            name = token[1]\n            if name not in variables:\n                raise NameError(f\"Undefined variable: {name}\")\n            return variables[name]\n\n        raise SyntaxError(f\"Unexpected token: {token}\")\n\n    result = parse_expr()\n    if pos[0] < len(tokens):\n        raise SyntaxError(f\"Unexpected token after expression: {tokens[pos[0]]}\")\n    return result\n",
+      "tasks/t7/test_expr.py": "from expr import evaluate\n\n# Basic arithmetic\nassert evaluate(\"2 + 3\") == 5\nassert evaluate(\"10 - 3\") == 7\nassert evaluate(\"4 * 5\") == 20\nassert evaluate(\"15 / 3\") == 5.0\n\n# Precedence: * before +\nassert evaluate(\"2 + 3 * 4\") == 14, f\"Precedence: {evaluate('2 + 3 * 4')}\"\nassert evaluate(\"2 * 3 + 4\") == 10\n\n# Parentheses override precedence\nassert evaluate(\"(2 + 3) * 4\") == 20\nassert evaluate(\"2 * (3 + 4)\") == 14\n\n# Unary minus\nassert evaluate(\"-5\") == -5\nassert evaluate(\"-5 + 3\") == -2\nassert evaluate(\"-(2 + 3)\") == -5\n\n# Variables\nassert evaluate(\"x + 1\", {\"x\": 10}) == 11\nassert evaluate(\"x * y + z\", {\"x\": 2, \"y\": 3, \"z\": 4}) == 10\n\n# Nested parentheses\nassert evaluate(\"((2 + 3) * (4 - 1))\") == 15\n\n# Division by zero\ntry:\n    evaluate(\"5 / 0\")\n    assert False, \"Should raise ZeroDivisionError\"\nexcept ZeroDivisionError:\n    pass\n\n# Complex expression\nassert evaluate(\"2 + 3 * 4 - 6 / 2\") == 11.0, f\"Complex: {evaluate('2 + 3 * 4 - 6 / 2')}\"\n\nprint(\"test_expr: PASSED\")\n",
+      "tasks/t8/router.py": "\"\"\"Minimal URL router with path parameters and middleware.\"\"\"\nimport re\n\nclass Router:\n    def __init__(self):\n        self.routes = []\n        self.middleware = []\n\n    def add_middleware(self, fn):\n        \"\"\"Add middleware function. Called before handler with (request, next).\"\"\"\n        self.middleware.append(fn)\n\n    def route(self, method, pattern, handler):\n        \"\"\"Register a route. Pattern supports :param syntax.\n        e.g., '/users/:id/posts/:post_id'\n        \"\"\"\n        # Convert :param to named regex groups\n        regex_pattern = re.sub(r':(\\w+)', r'(?P<\\1>[^/]+)', pattern)\n        regex_pattern = f'^{regex_pattern}$'\n        self.routes.append((method.upper(), re.compile(regex_pattern), handler))\n\n    def match(self, method, path):\n        \"\"\"Find matching route. Returns (handler, params) or (None, {}).\"\"\"\n        for route_method, pattern, handler in self.routes:\n            if route_method != method.upper():\n                continue\n            m = pattern.match(path)\n            if m:\n                return handler, m.groupdict()\n        return None, {}\n\n    def handle(self, request):\n        \"\"\"Process request through middleware chain and handler.\n        request = {\"method\": \"GET\", \"path\": \"/users/123\", \"headers\": {}, \"body\": None}\n        \"\"\"\n        handler, params = self.match(request[\"method\"], request[\"path\"])\n        if handler is None:\n            return {\"status\": 404, \"body\": \"Not Found\"}\n\n        request[\"params\"] = params\n\n        # Bug: middleware chain is broken — doesn't actually chain them\n        # Each middleware should call next() to continue the chain\n        for mw in self.middleware:\n            result = mw(request)\n            if result is not None:\n                return result  # Short-circuit\n\n        return handler(request)\n",
+      "tasks/t8/test_router.py": "from router import Router\n\n# Basic routing\nr = Router()\nr.route(\"GET\", \"/hello\", lambda req: {\"status\": 200, \"body\": \"Hello!\"})\nr.route(\"GET\", \"/users/:id\", lambda req: {\"status\": 200, \"body\": f\"User {req['params']['id']}\"})\nr.route(\"POST\", \"/users\", lambda req: {\"status\": 201, \"body\": \"Created\"})\nr.route(\"GET\", \"/users/:user_id/posts/:post_id\",\n        lambda req: {\"status\": 200, \"body\": f\"User {req['params']['user_id']} Post {req['params']['post_id']}\"})\n\n# Test basic match\nresp = r.handle({\"method\": \"GET\", \"path\": \"/hello\", \"headers\": {}, \"body\": None})\nassert resp[\"status\"] == 200 and resp[\"body\"] == \"Hello!\"\n\n# Path params\nresp2 = r.handle({\"method\": \"GET\", \"path\": \"/users/42\", \"headers\": {}, \"body\": None})\nassert resp2[\"body\"] == \"User 42\", f\"Path param: {resp2}\"\n\n# Multiple path params\nresp3 = r.handle({\"method\": \"GET\", \"path\": \"/users/1/posts/99\", \"headers\": {}, \"body\": None})\nassert resp3[\"body\"] == \"User 1 Post 99\", f\"Multi params: {resp3}\"\n\n# Method mismatch\nresp4 = r.handle({\"method\": \"DELETE\", \"path\": \"/hello\", \"headers\": {}, \"body\": None})\nassert resp4[\"status\"] == 404\n\n# 404\nresp5 = r.handle({\"method\": \"GET\", \"path\": \"/nonexistent\", \"headers\": {}, \"body\": None})\nassert resp5[\"status\"] == 404\n\n# Middleware: auth check\nr2 = Router()\ncall_order = []\n\ndef auth_middleware(request):\n    call_order.append(\"auth\")\n    if not request.get(\"headers\", {}).get(\"token\"):\n        return {\"status\": 401, \"body\": \"Unauthorized\"}\n    return None  # Continue\n\ndef logging_middleware(request):\n    call_order.append(\"log\")\n    return None  # Continue\n\nr2.add_middleware(logging_middleware)\nr2.add_middleware(auth_middleware)\nr2.route(\"GET\", \"/secret\", lambda req: (call_order.append(\"handler\"), {\"status\": 200, \"body\": \"Secret\"})[-1])\n\n# Without token: should hit logging then auth and stop\nresp6 = r2.handle({\"method\": \"GET\", \"path\": \"/secret\", \"headers\": {}, \"body\": None})\nassert resp6[\"status\"] == 401\nassert call_order == [\"log\", \"auth\"], f\"Middleware order: {call_order}\"\n\n# With token: should hit all middleware then handler\ncall_order.clear()\nresp7 = r2.handle({\"method\": \"GET\", \"path\": \"/secret\", \"headers\": {\"token\": \"valid\"}, \"body\": None})\nassert resp7[\"status\"] == 200\nassert call_order == [\"log\", \"auth\", \"handler\"], f\"Full chain: {call_order}\"\n\nprint(\"test_router: PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-21T07:46:08.634071+00:00",
+  "finished_at": "2026-03-21T07:55:30.872493+00:00",
+  "num_tasks": 8,
+  "trials_a_count": 40,
+  "trials_b_count": 40
+}

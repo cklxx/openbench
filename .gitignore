@@ -11,3 +11,4 @@ venv/
 .env
 *.egg
 .DS_Store
+.gstack/
