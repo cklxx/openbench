@@ -1,0 +1,113 @@
+{
+  "run_id": "a1fbd919-4c10-4a6b-a6cb-a0c71192af35",
+  "experiment": {
+    "name": "turn_correctness_curve__turns_11_vs_turns_17",
+    "description": "Map turn-correctness relationship on hard tasks. 5 agents with turns={8,11,14,17,20} on 4 hard tasks (3 bugs each). Reveals the sigmoid curve and optimal turn budget.",
+    "diff": {
+      "field": "system_prompt",
+      "description": "turns_11 vs turns_17"
+    },
+    "agent_a": {
+      "name": "turns_11",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are debugging Python code. Fix all bugs and make all tests pass.\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 11,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "agent_b": {
+      "name": "turns_17",
+      "model": "claude-haiku-4-5",
+      "system_prompt": "You are debugging Python code. Fix all bugs and make all tests pass.\nPrint the final test output.\n",
+      "allowed_tools": [
+        "Read",
+        "Write",
+        "Bash",
+        "Glob",
+        "Edit",
+        "Grep"
+      ],
+      "max_turns": 17,
+      "extra_options": {},
+      "mcp_servers": null
+    },
+    "tasks": [
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t1/bank.py. Run: cd tasks/t1 && python test_bank.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "bank",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t2/limiter.py. Run: cd tasks/t2 && python test_limiter.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "rate-limiter",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t3/mdtable.py. Run: cd tasks/t3 && python test_mdtable.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "parser",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      },
+      {
+        "__task__": true,
+        "prompt": "Fix all bugs in tasks/t4/emitter.py. Run: cd tasks/t4 && python test_emitter.py\nPrint the test output.",
+        "expected": "PASSED",
+        "difficulty": "hard",
+        "tags": [
+          "event-emitter",
+          "3-bugs"
+        ],
+        "check_fn": "\"PASSED\" in output or \"pass\" in output.lower()"
+      }
+    ],
+    "tags": [
+      "scaling-law",
+      "turn-curve",
+      "hard-tasks",
+      "tournament",
+      "turn_correctness_curve"
+    ],
+    "num_samples": 3,
+    "setup_files": {
+      "tasks/t1/bank.py": "class BankAccount:\n    def __init__(self, owner, balance=0):\n        self.owner = owner\n        self.balance = balance\n        self.opening_balance = balance\n        self.transactions = []\n\n    def deposit(self, amount):\n        if amount <= 0:\n            return False, \"Amount must be positive\"\n        self.balance += amount\n        self.transactions.append((\"deposit\", amount))\n        return True, None\n\n    def withdraw(self, amount):\n        if amount <= 0:\n            return False, \"Amount must be positive\"\n        # Bug A: no balance check — allows overdraft\n        self.balance -= amount\n        self.transactions.append((\"withdraw\", amount))\n        return True, None\n\n    def transfer(self, other, amount):\n        \"\"\"Transfer amount to other account. 2% fee charged to sender.\"\"\"\n        if amount <= 0:\n            return False, \"Amount must be positive\"\n        if self.balance < amount:\n            return False, \"Insufficient funds\"\n        fee = amount * 0.02\n        self.balance -= amount\n        # Bug B: adds (amount - fee) to recipient, but fee should come from sender\n        # Correct: other gets full amount, sender pays amount + fee\n        # Current: sender pays amount, other gets amount - fee (fee disappears)\n        other.balance += amount - fee\n        self.transactions.append((\"transfer_out\", amount))\n        other.transactions.append((\"transfer_in\", amount - fee))\n        return True, None\n\n    def apply_interest(self, rate):\n        \"\"\"Apply annual interest rate to the OPENING balance.\"\"\"\n        # Bug C: uses current balance instead of opening_balance\n        # Error will say \"Expected 1050.0, got 1102.5\" — looks like rate is wrong\n        # but rate (0.05) is correct. The issue is which balance is used.\n        interest = self.balance * rate\n        self.balance += interest\n        self.transactions.append((\"interest\", interest))\n        return interest\n",
+      "tasks/t1/test_bank.py": "from bank import BankAccount\n\ndef test_deposit_withdraw():\n    acc = BankAccount(\"Alice\", 1000)\n    acc.deposit(500)\n    assert acc.balance == 1500\n    ok, err = acc.withdraw(200)\n    assert ok and acc.balance == 1300\n    print(\"  deposit_withdraw: PASSED\")\n\ndef test_overdraft_protection():\n    acc = BankAccount(\"Bob\", 100)\n    ok, err = acc.withdraw(200)\n    assert not ok, f\"Should reject overdraft, but withdrew successfully (balance={acc.balance})\"\n    assert acc.balance == 100, f\"Balance should be unchanged: {acc.balance}\"\n    print(\"  overdraft_protection: PASSED\")\n\ndef test_transfer_fee():\n    \"\"\"2% fee on transfers. Sender pays fee, recipient gets full amount.\"\"\"\n    alice = BankAccount(\"Alice\", 1000)\n    bob = BankAccount(\"Bob\", 0)\n    alice.transfer(bob, 100)\n    # Alice pays 100 + 2% fee = 102 total\n    assert alice.balance == 898, f\"Alice should have 898 (1000 - 100 - 2 fee), got {alice.balance}\"\n    # Bob receives full 100\n    assert bob.balance == 100, f\"Bob should receive full 100, got {bob.balance}\"\n    print(\"  transfer_fee: PASSED\")\n\ndef test_interest_on_opening():\n    \"\"\"Interest should be calculated on opening balance, not current.\"\"\"\n    acc = BankAccount(\"Carol\", 1000)\n    acc.deposit(500)  # current = 1500, opening = 1000\n    interest = acc.apply_interest(0.05)\n    # 5% of opening balance 1000 = 50\n    assert interest == 50.0, f\"Interest should be 50.0 (5% of 1000 opening), got {interest}\"\n    assert acc.balance == 1550.0, f\"Balance should be 1550.0, got {acc.balance}\"\n    print(\"  interest_on_opening: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_deposit_withdraw\", \"test_overdraft_protection\",\n                  \"test_transfer_fee\", \"test_interest_on_opening\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t2/limiter.py": "import time\n\nclass RateLimiter:\n    def __init__(self, max_requests, window_seconds):\n        self.max_requests = max_requests\n        self.window = window_seconds\n        self.requests = {}  # key -> list of timestamps\n\n    def _cleanup(self, key):\n        \"\"\"Remove expired requests outside the window.\"\"\"\n        now = time.time()\n        if key in self.requests:\n            # Bug B: > should be >= (requests exactly at window boundary are kept)\n            self.requests[key] = [t for t in self.requests[key]\n                                   if now - t > self.window]\n\n    def is_allowed(self, key):\n        \"\"\"Check if request is within rate limit.\"\"\"\n        self._cleanup(key)\n        if key not in self.requests:\n            self.requests[key] = []\n        # Bug A: missing the actual check — always allows\n        self.requests[key].append(time.time())\n        return True\n\n    def get_remaining(self, key):\n        \"\"\"Return how many requests are still allowed in current window.\"\"\"\n        self._cleanup(key)\n        # Bug C: uses len(self.requests.get(key, [])) which includes requests\n        # that _cleanup should have removed but didn't (due to Bug B),\n        # AND counts all requests ever made if cleanup is broken.\n        # But even with cleanup fixed: should count only requests IN the window.\n        used = len(self.requests.get(key, []))\n        return max(0, self.max_requests - used)\n\n    def reset(self, key):\n        self.requests.pop(key, None)\n",
+      "tasks/t2/test_limiter.py": "import time\nfrom limiter import RateLimiter\n\ndef test_basic_limiting():\n    \"\"\"Should block after max_requests.\"\"\"\n    rl = RateLimiter(max_requests=3, window_seconds=10)\n    assert rl.is_allowed(\"user1\") == True\n    assert rl.is_allowed(\"user1\") == True\n    assert rl.is_allowed(\"user1\") == True\n    assert rl.is_allowed(\"user1\") == False, \"4th request should be blocked\"\n    print(\"  basic_limiting: PASSED\")\n\ndef test_window_expiry():\n    \"\"\"Requests should expire after window.\"\"\"\n    rl = RateLimiter(max_requests=2, window_seconds=0.1)\n    rl.is_allowed(\"user1\")\n    rl.is_allowed(\"user1\")\n    time.sleep(0.15)  # wait for window to expire\n    result = rl.is_allowed(\"user1\")\n    assert result == True, \"Request after window expiry should be allowed\"\n    print(\"  window_expiry: PASSED\")\n\ndef test_remaining_count():\n    \"\"\"get_remaining should reflect requests in current window only.\"\"\"\n    rl = RateLimiter(max_requests=5, window_seconds=0.1)\n    assert rl.get_remaining(\"user1\") == 5\n    rl.is_allowed(\"user1\")\n    rl.is_allowed(\"user1\")\n    assert rl.get_remaining(\"user1\") == 3, \\\n        f\"After 2 requests, remaining should be 3, got {rl.get_remaining('user1')}\"\n    time.sleep(0.15)  # window expires\n    assert rl.get_remaining(\"user1\") == 5, \\\n        f\"After window expiry, remaining should be 5 (reset), got {rl.get_remaining('user1')}\"\n    print(\"  remaining_count: PASSED\")\n\ndef test_independent_keys():\n    rl = RateLimiter(max_requests=2, window_seconds=10)\n    rl.is_allowed(\"user1\")\n    rl.is_allowed(\"user1\")\n    assert rl.is_allowed(\"user2\") == True, \"Different keys should be independent\"\n    print(\"  independent_keys: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_limiting\", \"test_window_expiry\",\n                  \"test_remaining_count\", \"test_independent_keys\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t3/mdtable.py": "def parse_table(text):\n    \"\"\"Parse a markdown table into list of dicts.\n\n    Example:\n    | Name | Age |\n    |------|-----|\n    | Alice | 30 |\n    | Bob   | 0  |\n\n    Returns: [{\"Name\": \"Alice\", \"Age\": 30}, {\"Name\": \"Bob\", \"Age\": 0}]\n    \"\"\"\n    lines = [l.strip() for l in text.strip().split(\"\\n\") if l.strip()]\n    if len(lines) < 3:\n        return []\n\n    # Parse header\n    # Bug A: doesn't strip whitespace from cells\n    headers = [h for h in lines[0].split(\"|\") if h]\n\n    # Skip separator line (line with ---)\n    # Bug B: skips line at index 1 always, but should find the --- line\n    # If table has no separator, this skips a data row\n    data_start = 2\n\n    rows = []\n    for line in lines[data_start:]:\n        cells = [c for c in line.split(\"|\") if c]\n        if len(cells) != len(headers):\n            continue\n        row = {}\n        for i, header in enumerate(headers):\n            row[header.strip()] = _convert(cells[i].strip())\n        rows.append(row)\n    return rows\n\n\ndef _convert(val):\n    \"\"\"Convert string to int or float if possible.\"\"\"\n    # Bug C: `if not val` catches empty string AND zero-like values\n    # \"0\" is truthy as a string, so this actually works for \"0\"...\n    # But the real bug: returns original string if conversion fails,\n    # but doesn't handle \"0\" specially — the issue is float(\"0\") works\n    # Actually let me redesign this bug...\n    if not val:\n        return val\n    try:\n        if \".\" in val:\n            return float(val)\n        return int(val)\n    except (ValueError, TypeError):\n        return val\n\n\ndef to_markdown(rows, headers=None):\n    \"\"\"Convert list of dicts to markdown table string.\"\"\"\n    if not rows:\n        return \"\"\n    if headers is None:\n        headers = list(rows[0].keys())\n    lines = [\"| \" + \" | \".join(headers) + \" |\"]\n    lines.append(\"| \" + \" | \".join(\"---\" for _ in headers) + \" |\")\n    for row in rows:\n        cells = [str(row.get(h, \"\")) for h in headers]\n        lines.append(\"| \" + \" | \".join(cells) + \" |\")\n    return \"\\n\".join(lines)\n",
+      "tasks/t3/test_mdtable.py": "from mdtable import parse_table, to_markdown\n\nTABLE = \"\"\"\n| Name  | Age | Score |\n|-------|-----|-------|\n| Alice | 30  | 95.5  |\n| Bob   | 25  | 87.0  |\n\"\"\"\n\ndef test_parse_basic():\n    rows = parse_table(TABLE)\n    assert len(rows) == 2, f\"Expected 2 rows, got {len(rows)}\"\n    assert rows[0][\"Name\"] == \"Alice\", f\"Got name: {rows[0].get('Name', 'MISSING')}\"\n    assert rows[1][\"Name\"] == \"Bob\"\n    print(\"  parse_basic: PASSED\")\n\ndef test_type_conversion():\n    rows = parse_table(TABLE)\n    assert isinstance(rows[0][\"Age\"], int), \\\n        f\"Age should be int, got {type(rows[0]['Age']).__name__}: {rows[0]['Age']!r}\"\n    assert rows[0][\"Age\"] == 30\n    assert isinstance(rows[0][\"Score\"], float), \\\n        f\"Score should be float, got {type(rows[0]['Score']).__name__}\"\n    assert rows[0][\"Score\"] == 95.5\n    print(\"  type_conversion: PASSED\")\n\ndef test_no_separator():\n    \"\"\"Table without --- separator line should still parse.\"\"\"\n    table = \"\"\"| X | Y |\n| 1 | 2 |\n| 3 | 4 |\"\"\"\n    rows = parse_table(table)\n    assert len(rows) == 2, f\"Expected 2 data rows, got {len(rows)}: {rows}\"\n    assert rows[0][\"X\"] == 1\n    print(\"  no_separator: PASSED\")\n\ndef test_roundtrip():\n    rows = parse_table(TABLE)\n    md = to_markdown(rows, [\"Name\", \"Age\", \"Score\"])\n    rows2 = parse_table(md)\n    assert len(rows2) == len(rows), f\"Roundtrip lost rows: {len(rows)} -> {len(rows2)}\"\n    assert rows2[0][\"Name\"] == rows[0][\"Name\"]\n    print(\"  roundtrip: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_parse_basic\", \"test_type_conversion\",\n                  \"test_no_separator\", \"test_roundtrip\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n",
+      "tasks/t4/emitter.py": "class EventEmitter:\n    def __init__(self):\n        self.handlers = {}   # event -> list of {\"fn\": callable, \"once\": bool}\n\n    def on(self, event, handler):\n        \"\"\"Register a handler for an event.\"\"\"\n        self.handlers.setdefault(event, []).append({\"fn\": handler, \"once\": False})\n\n    def once(self, event, handler):\n        \"\"\"Register a handler that fires only once.\"\"\"\n        # Bug B: marks as once=False instead of once=True\n        self.handlers.setdefault(event, []).append({\"fn\": handler, \"once\": False})\n\n    def off(self, event, handler=None):\n        \"\"\"Remove a specific handler, or all handlers for an event.\"\"\"\n        if event not in self.handlers:\n            return\n        if handler is None:\n            del self.handlers[event]\n            return\n        # Bug C: removes ALL handlers for the event, not just the matching one\n        # Should filter to keep non-matching handlers\n        self.handlers[event] = []\n\n    def emit(self, event, *args, **kwargs):\n        \"\"\"Fire all handlers for an event.\"\"\"\n        if event not in self.handlers:\n            return []\n        results = []\n        remaining = []\n        for h in self.handlers[event]:\n            # Bug A: doesn't pass args/kwargs to handler\n            results.append(h[\"fn\"]())\n            if not h[\"once\"]:\n                remaining.append(h)\n        self.handlers[event] = remaining\n        return results\n\n    def listener_count(self, event):\n        return len(self.handlers.get(event, []))\n",
+      "tasks/t4/test_emitter.py": "from emitter import EventEmitter\n\ndef test_basic_emit():\n    ee = EventEmitter()\n    received = []\n    ee.on(\"data\", lambda x: received.append(x))\n    ee.emit(\"data\", 42)\n    assert received == [42], f\"Handler should receive 42, got {received}\"\n    print(\"  basic_emit: PASSED\")\n\ndef test_once():\n    ee = EventEmitter()\n    count = [0]\n    ee.once(\"login\", lambda: count.__setitem__(0, count[0] + 1))\n    ee.emit(\"login\")\n    ee.emit(\"login\")\n    assert count[0] == 1, f\"Once handler should fire exactly 1 time, fired {count[0]}\"\n    assert ee.listener_count(\"login\") == 0, \\\n        f\"Once handler should be removed after firing, count={ee.listener_count('login')}\"\n    print(\"  once: PASSED\")\n\ndef test_off_specific():\n    \"\"\"Removing one handler should not affect other handlers for same event.\"\"\"\n    ee = EventEmitter()\n    results = []\n    handler_a = lambda: results.append(\"A\")\n    handler_b = lambda: results.append(\"B\")\n    ee.on(\"tick\", handler_a)\n    ee.on(\"tick\", handler_b)\n    ee.off(\"tick\", handler_a)\n    assert ee.listener_count(\"tick\") == 1, \\\n        f\"Should have 1 handler remaining after removing 1, got {ee.listener_count('tick')}\"\n    ee.emit(\"tick\")\n    assert results == [\"B\"], f\"Only handler B should fire, got {results}\"\n    print(\"  off_specific: PASSED\")\n\ndef test_multiple_events():\n    ee = EventEmitter()\n    a_count = [0]\n    b_count = [0]\n    ee.on(\"a\", lambda: a_count.__setitem__(0, a_count[0] + 1))\n    ee.on(\"b\", lambda: b_count.__setitem__(0, b_count[0] + 1))\n    ee.emit(\"a\")\n    ee.emit(\"a\")\n    ee.emit(\"b\")\n    assert a_count[0] == 2 and b_count[0] == 1\n    print(\"  multiple_events: PASSED\")\n\nif __name__ == \"__main__\":\n    passed = failed = 0\n    for name in [\"test_basic_emit\", \"test_once\",\n                  \"test_off_specific\", \"test_multiple_events\"]:\n        try:\n            globals()[name]()\n            passed += 1\n        except Exception as e:\n            print(f\"  {name}: FAILED -- {e}\")\n            failed += 1\n    print(f\"\\nResults: {passed}/{passed+failed}\")\n    if failed == 0:\n        print(\"PASSED\")\n"
+    },
+    "setup_script": null
+  },
+  "started_at": "2026-03-23T06:53:13.349133+00:00",
+  "finished_at": "2026-03-23T06:56:39.657915+00:00",
+  "num_tasks": 4,
+  "trials_a_count": 12,
+  "trials_b_count": 12
+}
